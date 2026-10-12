@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applied AI Academy — Master Production AI Engineering</title>
+    <meta name="description" content="An interactive, gamified learning platform for Applied AI Engineering. Build production-ready AI systems through visual lessons, interactive demos, and hands-on quizzes.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+    <!-- Top Progress Bar -->
+    <div class="top-progress-bar" id="topProgressBar">
+        <div class="top-progress-fill" id="topProgressFill"></div>
+    </div>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header" id="mobileHeader">
+        <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="mobile-logo">
+            <span class="logo-icon">⚡</span>
+            <span>AI Academy</span>
+        </div>
+        <div class="mobile-xp" id="mobileXp">0 XP</div>
+    </header>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon-wrap">
+                    <span class="logo-icon">⚡</span>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">AI Academy</span>
+                    <span class="logo-subtitle">Applied AI Engineering</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="player-card">
+            <div class="level-badge" id="levelBadge">
+                <svg class="level-ring" viewBox="0 0 60 60">
+                    <circle class="level-ring-bg" cx="30" cy="30" r="26" />
+                    <circle class="level-ring-fill" id="levelRingFill" cx="30" cy="30" r="26" />
+                </svg>
+                <span class="level-number" id="levelNumber">1</span>
+            </div>
+            <div class="player-info">
+                <span class="player-rank" id="playerRank">Novice</span>
+                <div class="xp-bar-container">
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xpFill"></div>
+                    </div>
+                    <span class="xp-text" id="xpText">0 / 100 XP</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebarNav">
+            <!-- Populated by JS -->
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="streak-card">
+                <span class="streak-flame">🔥</span>
+                <div class="streak-info">
+                    <span class="streak-count" id="streakCount">0</span>
+                    <span class="streak-label">Day Streak</span>
+                </div>
+            </div>
+            <div class="stats-mini">
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="totalSections">0</span>
+                    <span class="stat-mini-label">Sections</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="totalQuizzes">0</span>
+                    <span class="stat-mini-label">Quizzes</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Dynamically rendered by app.js -->
+    </main>
+
+    <!-- Quiz Modal -->
+    <div class="quiz-overlay" id="quizOverlay">
+        <div class="quiz-modal" id="quizModal">
+            <div class="quiz-header">
+                <div class="quiz-progress-bar">
+                    <div class="quiz-progress-fill" id="quizProgressFill"></div>
+                </div>
+                <div class="quiz-header-info">
+                    <span class="quiz-title" id="quizTitle">Knowledge Check</span>
+                    <span class="quiz-counter" id="quizCounter">1 / 5</span>
+                </div>
+                <button class="quiz-close" id="quizClose" aria-label="Close quiz">✕</button>
+            </div>
+            <div class="quiz-body" id="quizBody">
+                <!-- Question rendered by JS -->
+            </div>
+            <div class="quiz-footer" id="quizFooter">
+                <button class="btn btn-primary quiz-next-btn" id="quizNextBtn" disabled>Next Question</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Results Modal -->
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-modal" id="resultsModal">
+            <!-- Results rendered by JS -->
+        </div>
+    </div>
+
+    <!-- Achievement Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Confetti Canvas -->
+    <canvas class="confetti-canvas" id="confettiCanvas"></canvas>
+
+    <script src="content.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
