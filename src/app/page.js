@@ -15,6 +15,10 @@ import PipelineViz from '@/components/PipelineViz';
 import QuizModal from '@/components/QuizModal';
 import ResultsModal from '@/components/ResultsModal';
 import ToastContainer from '@/components/ToastContainer';
+import PromptHierarchySim from '@/components/PromptHierarchySim';
+import FewShotCotSim from '@/components/FewShotCotSim';
+import StructuredOutputSim from '@/components/StructuredOutputSim';
+import PromptEvalSim from '@/components/PromptEvalSim';
 
 export default function AcademyApp() {
   // ─── User & Cloud State ─────────────────────────────────────
@@ -827,6 +831,38 @@ export default function AcademyApp() {
                                 onSimulationSuccess={() => {
                                   showToast('🛡️', 'Boundary Secured', 'API key validation passed!', '+35 XP');
                                   setXp((x) => x + 35);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'prompt-hierarchy-sim' && (
+                              <PromptHierarchySim
+                                onInteract={() => {
+                                  showToast('🛡️', 'Precedence Verified', 'Prompt hierarchy evaluated!', '+25 XP');
+                                  setXp((x) => x + 25);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'fewshot-cot-sim' && (
+                              <FewShotCotSim
+                                onInteract={() => {
+                                  showToast('🧠', 'Reasoning Evaluated', 'Ticket routing strategy analyzed!', '+25 XP');
+                                  setXp((x) => x + 25);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'structured-output-sim' && (
+                              <StructuredOutputSim
+                                onInteract={() => {
+                                  showToast('📦', 'Contract Enforced', 'Structured repair loop executed!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'prompt-eval-sim' && (
+                              <PromptEvalSim
+                                onInteract={() => {
+                                  showToast('🧪', 'Eval Suite Passed', 'A/B prompt comparison checked!', '+30 XP');
+                                  setXp((x) => x + 30);
                                 }}
                               />
                             )}
