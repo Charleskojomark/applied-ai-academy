@@ -283,17 +283,10 @@ export default function AcademyApp() {
           <span className="logo-icon">⚡</span>
           <span>AI Academy</span>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
+        <div className="mobile-header-right">
           <div
-            className="mobile-xp"
+            className="mobile-xp mobile-callsign-btn"
             onClick={() => setIsUserModalOpen(true)}
-            style={{ cursor: 'pointer' }}
             title="Click to view Neon Cloud Callsign"
           >
             {username ? `@${username}` : '⚡ Register'}
