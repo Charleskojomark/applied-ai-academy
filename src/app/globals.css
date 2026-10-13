@@ -71,10 +71,12 @@ html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+    touch-action: pan-y pinch-zoom;
 }
 
 body {
@@ -82,12 +84,14 @@ body {
     background: var(--bg-primary);
     color: var(--text-primary);
     line-height: 1.7;
+    overflow-x: clip;
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
     position: relative;
     box-sizing: border-box;
+    touch-action: pan-y pinch-zoom;
 }
 
 /* Global viewport & child overflow guards */
@@ -884,6 +888,10 @@ body.sidebar-locked {
     flex-direction: column;
     gap: 24px;
     margin-bottom: 40px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .section-card {
     background: var(--bg-card);
@@ -893,6 +901,10 @@ body.sidebar-locked {
     transition: all var(--transition-medium);
     animation: fadeInUp 0.5s var(--ease-out-expo);
     animation-fill-mode: backwards;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .section-card:nth-child(1) { animation-delay: 0.05s; }
 .section-card:nth-child(2) { animation-delay: 0.1s; }
@@ -920,6 +932,10 @@ body.sidebar-locked {
     padding: 20px 24px;
     cursor: pointer;
     user-select: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .section-number {
     width: 36px;
@@ -943,12 +959,15 @@ body.sidebar-locked {
 }
 .section-header-text {
     flex: 1;
+    min-width: 0;
 }
 .section-title-text {
     font-size: 1rem;
     font-weight: 700;
     display: block;
     letter-spacing: -0.01em;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 .section-type-badge {
     font-size: 0.6rem;
@@ -990,15 +1009,25 @@ body.sidebar-locked {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.5s var(--ease-out-expo);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .section-card.expanded .section-body {
-    max-height: 5000px;
+    max-height: 8000px;
 }
 .section-content {
     padding: 0 24px 24px;
     line-height: 1.8;
     font-size: 0.92rem;
     color: var(--text-secondary);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Content Styling */
@@ -1130,6 +1159,9 @@ body.sidebar-locked {
     border-radius: var(--radius-md);
     margin: 16px 0;
     overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 .code-header {
     display: flex;
@@ -1138,6 +1170,8 @@ body.sidebar-locked {
     padding: 10px 16px;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid var(--border-subtle);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .code-lang {
     font-size: 0.7rem;
@@ -1173,9 +1207,16 @@ pre {
     font-size: 0.82rem;
     line-height: 1.7;
     color: #E2E8F0;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 pre code {
     font-family: inherit;
+    display: inline-block;
+    min-width: 100%;
+    max-width: none;
 }
 
 /* Syntax highlighting colors */
@@ -1228,6 +1269,11 @@ pre code {
 /* Data Tables */
 .data-table-wrap {
     overflow-x: auto;
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
     margin: 20px 0;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
@@ -1236,6 +1282,7 @@ pre code {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.82rem;
+    min-width: 480px;
 }
 .data-table thead {
     background: rgba(255, 255, 255, 0.04);
@@ -2951,16 +2998,18 @@ pre code {
     }
     .sidebar {
         transform: translateX(-100%);
+        left: -320px;
         visibility: hidden;
         pointer-events: none;
         z-index: 980;
         width: 300px;
         max-width: 85vw;
         box-shadow: none;
-        transition: transform var(--transition-medium), visibility 0.3s;
+        transition: transform var(--transition-medium), left 0.3s, visibility 0.3s;
     }
     .sidebar.open {
         transform: translateX(0);
+        left: 0;
         visibility: visible;
         pointer-events: auto;
         box-shadow: 10px 0 40px rgba(0, 0, 0, 0.75);

@@ -139,6 +139,105 @@ export default function AcademyApp() {
     }
   }, []);
 
+  // ─── Bind Global Course Interactive Handlers ─────────────────
+  useEffect(() => {
+    // 1. Expose copyCode on window for inline onclicks
+    window.copyCode = (btn) => {
+      if (!btn) return;
+      const codeBlock = btn.closest('.code-block');
+      const code = codeBlock ? codeBlock.querySelector('pre code') : null;
+      if (!code) return;
+      navigator.clipboard.writeText(code.textContent).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(() => {
+        btn.textContent = 'Failed';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    };
+
+    // 2. Expose toggleChecklistItem on window
+    window.toggleChecklistItem = (itemEl, labPrefix) => {
+      if (!itemEl) return;
+      itemEl.classList.toggle('checked');
+      const parent = itemEl.parentElement;
+      if (!parent) return;
+      const checked = parent.querySelectorAll('.checklist-item.checked').length;
+      const total = parent.querySelectorAll('.checklist-item').length;
+      const counter = document.getElementById(`${labPrefix}ChecklistCount`);
+      if (counter) counter.textContent = `${checked} / ${total} Completed`;
+      if (checked === total && total > 0) {
+        showToast('🏆', 'Lab Complete!', `All steps in ${labPrefix.toUpperCase()} finished!`, '+25 XP');
+        setXp((x) => x + 25);
+      }
+    };
+
+    // 3. Global Click Delegation for Course Tabs & Toggles
+    const handleGlobalClick = (e) => {
+      // Arch toggle buttons (Hosted vs Open-Weight)
+      const archBtn = e.target.closest('.arch-toggle-btn');
+      if (archBtn) {
+        e.preventDefault();
+        const container = archBtn.closest('.arch-toggle-container') || document;
+        container.querySelectorAll('.arch-toggle-btn').forEach((b) => b.classList.remove('active'));
+        archBtn.classList.add('active');
+        container.querySelectorAll('.arch-panel').forEach((p) => p.classList.remove('active'));
+        const panel = document.getElementById(`arch-${archBtn.dataset.panel}`);
+        if (panel) panel.classList.add('active');
+        return;
+      }
+
+      // Prompt compare tabs (Prompt A vs Prompt B vs Analysis)
+      const promptTab = e.target.closest('.prompt-tab');
+      if (promptTab) {
+        e.preventDefault();
+        const container = promptTab.closest('.prompt-compare') || document;
+        container.querySelectorAll('.prompt-tab').forEach((t) => t.classList.remove('active'));
+        promptTab.classList.add('active');
+        container.querySelectorAll('.prompt-content').forEach((p) => p.classList.remove('active'));
+        const target = document.getElementById(promptTab.dataset.target);
+        if (target) target.classList.add('active');
+        return;
+      }
+
+      // Pipeline stages (Tokenization, Embeddings, Attention, Generation)
+      const stage = e.target.closest('.pipeline-stage');
+      if (stage) {
+        e.preventDefault();
+        const container = stage.closest('.pipeline-viz') || document;
+        container.querySelectorAll('.pipeline-stage').forEach((s) => s.classList.remove('active-stage'));
+        stage.classList.add('active-stage');
+        const detail = document.getElementById('pipelineDetail');
+        if (detail && stage.dataset.detail) {
+          detail.style.opacity = '0';
+          setTimeout(() => {
+            detail.textContent = stage.dataset.detail;
+            detail.style.opacity = '1';
+          }, 150);
+        }
+        return;
+      }
+
+      // Copy code button fallback
+      const copyBtn = e.target.closest('.code-copy');
+      if (copyBtn && window.copyCode) {
+        e.preventDefault();
+        window.copyCode(copyBtn);
+        return;
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, []);
+
   // ─── User Creation / Switch Handler ─────────────────────────
   const handleUserCreated = (user, isNew) => {
     setUsername(user.username);
