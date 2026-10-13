@@ -857,7 +857,17 @@ export default function AcademyApp() {
                     >
                       <div
                         className="section-header"
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        aria-controls={`section-content-${section.id}`}
                         onClick={() => toggleSection(section.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleSection(section.id);
+                          }
+                        }}
                       >
                         <div className="section-number">{isDone ? '✓' : idx + 1}</div>
                         <div className="section-header-text">
@@ -872,7 +882,7 @@ export default function AcademyApp() {
                       </div>
 
                       {isExpanded && (
-                        <div className="section-body">
+                        <div className="section-body" id={`section-content-${section.id}`}>
                           <div className="section-content">
                             {/* Render HTML content */}
                             <div

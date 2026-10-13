@@ -937,6 +937,12 @@ body.sidebar-locked {
     min-width: 0;
     box-sizing: border-box;
 }
+.section-header:focus-visible,
+.module-card:focus-visible,
+.user-pill:focus-visible {
+    outline: 2px solid var(--accent-cyan);
+    outline-offset: 3px;
+}
 .section-number {
     width: 36px;
     height: 36px;
@@ -1500,6 +1506,7 @@ pre code {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
 }
 .prompt-tab {
     padding: 8px 16px;
@@ -1604,9 +1611,11 @@ pre code {
     padding: 4px;
     margin-bottom: 20px;
     border: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
 }
 .arch-toggle-btn {
     flex: 1;
+    min-width: 0;
     padding: 10px 16px;
     background: none;
     border: none;
@@ -3120,6 +3129,21 @@ pre code {
         min-width: 0;
         box-sizing: border-box;
     }
+    .section-content > * {
+        max-width: 100%;
+        min-width: 0;
+    }
+    .section-content > div[style] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+    .section-content table {
+        max-width: 100%;
+    }
+    .section-content [style*="grid-template-columns"] {
+        min-width: 0 !important;
+    }
     .stats-row {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -3280,7 +3304,7 @@ pre code {
         gap: 12px;
     }
     .persona-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
     .comparison-container {
@@ -3621,6 +3645,16 @@ pre code {
         gap: 8px;
         align-items: center;
     }
+    .prompt-compare-header,
+    .arch-toggle-btns {
+        width: 100%;
+    }
+    .prompt-tab,
+    .arch-toggle-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        white-space: normal;
+    }
 }
 
 @media (max-width: 480px) {
@@ -3933,4 +3967,3 @@ html, body, #__next, .main-content {
     overflow-x: hidden !important;
     box-sizing: border-box !important;
 }
-
