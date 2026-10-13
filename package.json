@@ -25,5 +25,8 @@
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.13.0"
   }
 }
