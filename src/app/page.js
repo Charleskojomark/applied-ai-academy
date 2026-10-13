@@ -19,6 +19,11 @@ import PromptHierarchySim from '@/components/PromptHierarchySim';
 import FewShotCotSim from '@/components/FewShotCotSim';
 import StructuredOutputSim from '@/components/StructuredOutputSim';
 import PromptEvalSim from '@/components/PromptEvalSim';
+import VectorSimilaritySim from '@/components/VectorSimilaritySim';
+import VectorDbSelectorSim from '@/components/VectorDbSelectorSim';
+import ChunkingHybridSim from '@/components/ChunkingHybridSim';
+import RagPipelineSim from '@/components/RagPipelineSim';
+import RagFailureDebuggerSim from '@/components/RagFailureDebuggerSim';
 
 export default function AcademyApp() {
   // ─── User & Cloud State ─────────────────────────────────────
@@ -863,6 +868,46 @@ export default function AcademyApp() {
                                 onInteract={() => {
                                   showToast('🧪', 'Eval Suite Passed', 'A/B prompt comparison checked!', '+30 XP');
                                   setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'vector-similarity-sim' && (
+                              <VectorSimilaritySim
+                                onInteract={() => {
+                                  showToast('🎯', 'Similarity Computed', 'Vector space evaluated!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'vector-db-sim' && (
+                              <VectorDbSelectorSim
+                                onInteract={() => {
+                                  showToast('🗄️', 'Store Verified', 'Vector persistence tested!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'chunking-hybrid-sim' && (
+                              <ChunkingHybridSim
+                                onInteract={() => {
+                                  showToast('🔀', 'Hybrid Search', 'BM25 + Dense blend tested!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'rag-pipeline-sim' && (
+                              <RagPipelineSim
+                                onInteract={() => {
+                                  showToast('⚡', 'RAG Executed', 'Grounding citations validated!', '+35 XP');
+                                  setXp((x) => x + 35);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'rag-debugger-sim' && (
+                              <RagFailureDebuggerSim
+                                onInteract={() => {
+                                  showToast('🩺', 'Triage Complete', 'Sequential pipeline debugged!', '+35 XP');
+                                  setXp((x) => x + 35);
                                 }}
                               />
                             )}

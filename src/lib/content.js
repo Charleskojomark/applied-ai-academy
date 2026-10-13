@@ -1633,6 +1633,471 @@ Avoid jargon. Keep it simple.</code></pre>
         }
       ]
     }
+,
+    {
+      "id": "embeddings-similarity",
+      "title": "Embeddings & Vector Similarity Fundamentals",
+      "subtitle": "Transform text into high-dimensional vectors, compute cosine similarity, and master semantic retrieval",
+      "icon": "🎯",
+      "color": "#3B82F6",
+      "gradient": "linear-gradient(135deg, #3B82F6, #2DD4BF)",
+      "sections": [
+        {
+          "id": "embed-keyword-vs-vector",
+          "title": "The Retrieval Step: Beyond Keyword Matching",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how text embeddings transform words into vectors for semantic similarity scoring, enabling more accurate information retrieval than keyword search. Understand vector creation, cosine similarity, and practical techniques to optimize retrieval for large corpora in AI applications.</p>\n\n          <p>A keyword search can miss the right paragraph even when the meaning is a perfect match. In a toy internal docs corpus, a query like <em>\"Can contractors access the VPN from personal laptops\"</em> might share almost no words with a policy paragraph that answers it (e.g. <em>\"External vendor personnel are barred from remote network access on unmanaged devices\"</em>), so keyword overlap ranks it low or not at all.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🔄</span>\n            <span class=\"rule-text\"><strong>Flip the Failure:</strong> A query like <code>VPN policy laptop</code> might share keywords with a tangential troubleshooting note and retrieve that instead, even though it does not answer the access question. The retrieval step needs a way to <em>score meaning, not just shared strings</em>.</span>\n          </div>\n\n          <div class=\"flow-diagram\">\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-blue); background: rgba(59, 130, 246, 0.15);\">\n              <span class=\"flow-step-icon\">💬</span>\n              <span class=\"flow-step-label\">Query: \"Can contractors access VPN from personal laptops?\"</span>\n            </div>\n            <span class=\"flow-arrow\">▼</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-purple); background: rgba(139, 92, 246, 0.15);\">\n              <span class=\"flow-step-icon\">🧠</span>\n              <span class=\"flow-step-label\">Embedding Model (gemini-embedding-001) → 3072D Vector</span>\n            </div>\n            <span class=\"flow-arrow\">▼</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-emerald); background: rgba(16, 185, 129, 0.15);\">\n              <span class=\"flow-step-icon\">🎯</span>\n              <span class=\"flow-step-label\">Cosine Similarity Match (0.89) → \"Vendor remote access policy\"</span>\n            </div>\n          </div>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Key Shift:</strong> The pipeline does not compare text to text directly. It turns each text into a vector, scores vector closeness, and returns the top candidates.</p>\n          </div>\n        "
+        },
+        {
+          "id": "embed-text-to-vectors",
+          "title": "From Text to Vectors & Google Gen AI API",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>With vector retrieval, every chunk of the internal docs corpus first passes through an embedding function that maps a string to a <strong>fixed-length numeric array</strong>. That mapping is deterministic for a given model configuration, so identical input strings produce identical vectors, while small wording changes produce nearby vectors.</p>\n\n          <p>Inside the embedder, tokenization breaks the input string into subword units, then the embedder outputs a single vector for the whole input. The output preserves coarse semantics such as topic and relationships more reliably than surface form.</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — embed_query.py (Google Gen AI SDK)</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">google</span> <span class=\"kw\">import</span> <span class=\"var\">genai</span>\n<span class=\"kw\">from</span> <span class=\"var\">google.genai</span> <span class=\"kw\">import</span> <span class=\"var\">types</span>\n\n<span class=\"var\">client</span> = <span class=\"var\">genai</span>.<span class=\"type\">Client</span>(<span class=\"var\">api_key</span>=<span class=\"str\">\"{{GEMINI_API_KEY}}\"</span>)\n\n<span class=\"var\">MODEL_ID</span> = <span class=\"str\">\"gemini-embedding-001\"</span>\n\n<span class=\"var\">response</span> = <span class=\"var\">client</span>.<span class=\"var\">models</span>.<span class=\"fn\">embed_content</span>(\n    <span class=\"var\">model</span>=<span class=\"var\">MODEL_ID</span>,\n    <span class=\"var\">contents</span>=<span class=\"str\">\"Can contractors access the VPN from personal laptops?\"</span>,\n    <span class=\"var\">config</span>=<span class=\"var\">types</span>.<span class=\"type\">EmbedContentConfig</span>(\n        <span class=\"var\">task_type</span>=<span class=\"str\">\"RETRIEVAL_DOCUMENT\"</span>\n    )\n)\n\n<span class=\"var\">vector</span> = <span class=\"var\">response</span>.<span class=\"var\">embeddings</span>[<span class=\"num\">0</span>].<span class=\"var\">values</span>\n<span class=\"fn\">print</span>(<span class=\"str\">f\"Vector dimensions: {len(vector)}\"</span>)  <span class=\"cmt\"># 3072 dimensions by default</span>\n<span class=\"fn\">print</span>(<span class=\"str\">f\"Model used: {MODEL_ID}\"</span>)</code></pre>\n          </div>\n\n          <h3>Line-by-Line Annotations</h3>\n          <ul class=\"concept-list\">\n            <li><strong>Line 1–2:</strong> Imports <code>genai</code> and <code>types</code> from Google's official Gen AI SDK.</li>\n            <li><strong>Line 4:</strong> Initializes client with authentication credentials.</li>\n            <li><strong>Line 6:</strong> Sets model identifier <code>gemini-embedding-001</code>.</li>\n            <li><strong>Lines 8–14:</strong> <code>client.models.embed_content()</code> sends the contents and task type configuration (e.g. <code>RETRIEVAL_DOCUMENT</code> or <code>RETRIEVAL_QUERY</code>).</li>\n            <li><strong>Line 16:</strong> Extracts float array from <code>response.embeddings[0].values</code>.</li>\n            <li><strong>Lines 17–18:</strong> Verifies the vector length (3072 floats by default) and model identifier.</li>\n          </ul>\n\n          <div class=\"warning-box\">\n            <p><strong>🚨 Coordinate System Invariant:</strong> If corpus vectors were produced by one embedding model and query vectors by another, similarity scores become meaningless because the vectors do not share the same coordinate space!</p>\n          </div>\n        "
+        },
+        {
+          "id": "embed-similarity-scoring",
+          "title": "Cosine Similarity & Threshold Cutoffs",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Once query and document chunks become vectors, retrieval needs a numeric score to sort candidates. The common behavior is that <strong>vectors pointing in a similar direction should score higher</strong> than vectors pointing in a different direction, even if their lengths differ.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-cyan);\">\n            <span class=\"rule-icon\">📐</span>\n            <span class=\"rule-text\"><strong>Cosine Similarity Formula:</strong><br/>\n            $$\\cos(\\theta) = \\frac{q \\cdot d}{\\|q\\| \\|d\\|}$$<br/>\n            Here $q$ is the query vector, $d$ is the document vector, $q \\cdot d$ is the dot product that increases when vectors align, and $\\|q\\|$ and $\\|d\\|$ are magnitudes that normalize length so direction dominates.</span>\n          </div>\n\n          <h3>Tuning Retrieval Knobs: top_k vs Threshold</h3>\n          <ul>\n            <li><strong>top_k:</strong> Controls how many candidates move forward to later steps. Raise <code>top_k</code> only when the correct chunk appears just below the cutoff.</li>\n            <li><strong>Score Threshold:</strong> Blocks low-similarity chunks from entering the context at all. Raise the threshold when you see irrelevant chunks in top results.</li>\n          </ul>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Threshold Hint:</strong> Lowering the threshold increases recall but also increases the chance that unrelated chunks enter the context and distract the generator!</p>\n          </div>\n        "
+        },
+        {
+          "id": "embed-tradeoffs-table",
+          "title": "Vector Search vs Keyword vs Context Stuffing",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>The trade-off between keyword search, embedding similarity, and context stuffing shows up as specific failure symptoms in production:</p>\n\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Criterion</th>\n                  <th>Keyword Search</th>\n                  <th style=\"color: var(--accent-emerald);\">Embedding Similarity</th>\n                  <th>Context Stuffing</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Paraphrase handling</strong></td>\n                  <td style=\"color: var(--accent-rose);\">Weak</td>\n                  <td style=\"color: var(--accent-emerald);\">Strong</td>\n                  <td style=\"color: var(--accent-emerald);\">Strong</td>\n                </tr>\n                <tr>\n                  <td><strong>Exact-string match</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">Strong</td>\n                  <td style=\"color: var(--accent-rose);\">Weak</td>\n                  <td style=\"color: var(--accent-emerald);\">Strong</td>\n                </tr>\n                <tr>\n                  <td><strong>Scaling with corpus size</strong></td>\n                  <td>Good</td>\n                  <td style=\"color: var(--accent-emerald);\">Excellent</td>\n                  <td style=\"color: var(--accent-rose);\">Poor (Context limit)</td>\n                </tr>\n                <tr>\n                  <td><strong>Update frequency fit</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">Excellent</td>\n                  <td>Good</td>\n                  <td>Good</td>\n                </tr>\n                <tr>\n                  <td><strong>Typical failure symptom</strong></td>\n                  <td>Misses synonyms</td>\n                  <td>Misses exact tokens</td>\n                  <td>Runs out of room</td>\n                </tr>\n                <tr>\n                  <td><strong>Best starting criterion</strong></td>\n                  <td>Small, exact corpus</td>\n                  <td>Semantic search needed</td>\n                  <td>Tiny, fixed set</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n\n          <div class=\"rule-box\">\n            <span class=\"rule-icon\">🔍</span>\n            <span class=\"rule-text\"><strong>Verification Discipline:</strong> The fastest quality check is to inspect retrieved chunks and their metadata <em>before</em> asking the model to answer. If the top results do not contain an answerable passage, generation will be ungrounded!</span>\n          </div>\n        "
+        },
+        {
+          "id": "embed-interactive-sandbox",
+          "title": "Interactive Vector vs Keyword Retrieval Simulator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "vector-similarity-sim",
+          "content": "\n          <p>Test the difference between keyword matching and vector similarity on ambiguous policy queries:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Adjust the similarity cutoff threshold and top-k slider to see how candidates are filtered:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "What is the best verification step before letting the model generate an answer from retrieved context?",
+          "options": [
+            "Let the model generate first, then check whether the answer seems plausible",
+            "Inspect the retrieved chunks and their metadata first, then decide whether generation should proceed",
+            "Increase the prompt token budget and skip retrieval checks",
+            "Rerun training to improve the model before reviewing the retrieved chunks"
+          ],
+          "correct": 1,
+          "explanation": "The fastest quality check is to inspect top-k chunk texts, source IDs, and similarity scores before calling the model. If retrieval missed the answer, generation will be ungrounded."
+        },
+        {
+          "question": "Why does cosine similarity normalize vector lengths (magnitudes) during retrieval scoring?",
+          "options": [
+            "To ensure direction dominates over chunk length or token count",
+            "To compress the vector to 8-bit integers",
+            "To encrypt the document text",
+            "To speed up CPU clock cycles"
+          ],
+          "correct": 0,
+          "explanation": "Cosine similarity divides by vector magnitudes so that direction (semantic alignment) determines rank rather than the sheer length of the text chunk."
+        },
+        {
+          "question": "What happens if you embed your document corpus with one embedding model and query it with a different model?",
+          "options": [
+            "The queries run 10x faster",
+            "Similarity scores become meaningless because the vectors do not share the same coordinate space",
+            "The vector database automatically translates the vectors",
+            "Nothing, all embedding models are interchangeable"
+          ],
+          "correct": 1,
+          "explanation": "Different models produce vectors in incompatible coordinate spaces. The query and corpus must always be embedded with the exact same model."
+        },
+        {
+          "question": "When does pure keyword search typically outperform dense vector embeddings?",
+          "options": [
+            "When queries use heavy slang and paraphrasing",
+            "When looking up exact rare identifiers, ticket IDs, or specific config keys (e.g. VPN_DEVICE_POSTURE=1)",
+            "When searching across multiple foreign languages",
+            "When the corpus has millions of paragraphs"
+          ],
+          "correct": 1,
+          "explanation": "Dense embeddings can blur rare literal strings, while keyword search matches exact tokens and error codes precisely."
+        }
+      ]
+    },
+
+    {
+      "id": "vector-databases",
+      "title": "Vector Databases: FAISS, Chroma & Managed Stores",
+      "subtitle": "Evaluate persistence, metadata filtering, and scaling trade-offs across local and cloud vector engines",
+      "icon": "🗄️",
+      "color": "#8B5CF6",
+      "gradient": "linear-gradient(135deg, #8B5CF6, #EC4899)",
+      "sections": [
+        {
+          "id": "vectordb-dimensions",
+          "title": "Vector Database Choice Dimensions",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore vector database options for building efficient Retrieval-Augmented Generation systems. Learn to evaluate local and managed vector stores like FAISS, Chroma, Pinecone, and Weaviate based on persistence, filtering, and scaling needs.</p>\n\n          <p>We need fast semantic lookup over a few thousand to a few million chunks of internal docs, queries must support metadata filters, results must persist across restarts, and setup must stay simple on a laptop while leaving a path to managed scaling. The similarity math stays the same across options, but the backend changes what gets indexed, what gets stored, which filters run at query time, and who owns the operational work.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-purple);\">\n            <span class=\"rule-icon\">🧪</span>\n            <span class=\"rule-text\"><strong>The Restart Verification Test:</strong> Pick one query we care about, run it end to end, restart the process, and run it again with the same filter. If results disappear, filters break, or index build time dominates startup, the backend does not match the constraints!</span>\n          </div>\n        "
+        },
+        {
+          "id": "vectordb-local-first",
+          "title": "Local-First Stores: FAISS vs Chroma",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>With local-first storage, our process owns the embedding model call, the index build, and the query loop. The key difference between FAISS and Chroma is that they push different responsibilities into our code around persistence and metadata:</p>\n\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Dimension</th>\n                  <th>FAISS</th>\n                  <th style=\"color: var(--accent-emerald);\">Chroma</th>\n                  <th>Rule of Thumb</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Persistence</strong></td>\n                  <td>Optional files (manual)</td>\n                  <td style=\"color: var(--accent-emerald);\">Built-in persistence</td>\n                  <td>Need restart safety</td>\n                </tr>\n                <tr>\n                  <td><strong>Metadata filters</strong></td>\n                  <td>Manual application filtering</td>\n                  <td style=\"color: var(--accent-emerald);\">Native pre-scoring filters</td>\n                  <td>Query by metadata</td>\n                </tr>\n                <tr>\n                  <td><strong>Deployment mode</strong></td>\n                  <td>Library only (C++/Python)</td>\n                  <td>Embedded or local service</td>\n                  <td>Want simple embedding</td>\n                </tr>\n                <tr>\n                  <td><strong>Typical scale range</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">Millions to billions</td>\n                  <td>Thousands to millions</td>\n                  <td>Need very large index</td>\n                </tr>\n                <tr>\n                  <td><strong>Ops complexity</strong></td>\n                  <td>Higher</td>\n                  <td style=\"color: var(--accent-emerald);\">Lower</td>\n                  <td>Prefer less plumbing</td>\n                </tr>\n                <tr>\n                  <td><strong>Restart behavior</strong></td>\n                  <td>Lost unless reloaded</td>\n                  <td style=\"color: var(--accent-emerald);\">Usually survives automatically</td>\n                  <td>State must persist</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n\n          <div class=\"rule-box\">\n            <span class=\"rule-icon\">📌</span>\n            <span class=\"rule-text\"><strong>Rule to Apply:</strong> Choose <strong>FAISS</strong> when you can rebuild or reload the index deterministically and filters are simple. Choose <strong>Chroma</strong> when you need local disk persistence plus query-time metadata filtering as a first-class operation.</span>\n          </div>\n        "
+        },
+        {
+          "id": "vectordb-managed",
+          "title": "Managed Vector DBs & The Network Boundary",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Once multiple processes or machines must share the same index, local storage turns into an operational risk because each instance can drift. A managed vector database such as <strong>Pinecone</strong> or <strong>Weaviate</strong> moves the index behind a network boundary so clients upsert and query over an API, and the service handles persistence, replication, and access control.</p>\n\n          <h3>Production Testing &amp; Assertions:</h3>\n          <ul class=\"concept-list\">\n            <li>📌 After creating the collection, record its name and configured embedding dimension.</li>\n            <li>📌 After each upsert, log the number of IDs submitted and acknowledged, plus a sample ID and metadata pair.</li>\n            <li>📌 Run a vector query with a restrictive metadata filter and verify every returned result satisfies it.</li>\n          </ul>\n\n          <div class=\"warning-box\">\n            <p><strong>🌐 Network Boundary Invariant:</strong> When the store is remote, treat timeouts and partial failures as normal paths. Always handle retries and make upserts idempotent!</p>\n          </div>\n        "
+        },
+        {
+          "id": "vectordb-metadata-ingestion",
+          "title": "Metadata Filtering & Ingestion Validation",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Filters only work if we store the fields we plan to filter on and if we normalize them consistently at ingestion time. If a chunk lacks <code>doc_id</code> or <code>access_level</code>, a query cannot safely enforce document scoping or authorization with a filter, so the application ends up post-filtering and risking unauthorized data leakage.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🛡️</span>\n            <span class=\"rule-text\"><strong>Rule to Apply:</strong> Decide the minimal filter fields <em>before ingestion</em>, then enforce them with a validation check that rejects any chunk missing required metadata fields.</span>\n          </div>\n\n          <h3>Architectural Decision Mapping</h3>\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Scenario Statement</th>\n                  <th>Recommended Store Choice</th>\n                  <th>Rationale</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Solo dev prototyping</strong></td>\n                  <td>FAISS or Chroma</td>\n                  <td>Fast local iteration without cloud infrastructure costs.</td>\n                </tr>\n                <tr>\n                  <td><strong>Local persistence + filtering</strong></td>\n                  <td>Chroma</td>\n                  <td>Built-in disk collection with native <code>$and</code> / <code>$eq</code> filters.</td>\n                </tr>\n                <tr>\n                  <td><strong>Team shared index &amp; HA RAG</strong></td>\n                  <td>Managed DB (Pinecone / Weaviate)</td>\n                  <td>Multi-instance uptime, shared index, access control, and replication.</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n        "
+        },
+        {
+          "id": "vectordb-interactive",
+          "title": "Interactive Vector DB Architecture Evaluator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "vector-db-sim",
+          "content": "\n          <p>Evaluate FAISS vs Chroma vs Pinecone across persistence, metadata filtering, and crash recovery:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Execute the process crash simulation below to verify restart resilience:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "What is the primary difference between FAISS and Chroma regarding metadata filtering?",
+          "options": [
+            "FAISS filters metadata in hardware GPUs, while Chroma uses quantum circuits",
+            "Chroma provides native pre-scoring metadata filtering, while FAISS requires manual filtering in application code",
+            "FAISS only supports string metadata, while Chroma only supports numbers",
+            "There is no difference"
+          ],
+          "correct": 1,
+          "explanation": "Chroma stores metadata alongside vectors and filters candidates natively before similarity scoring, whereas FAISS is an index library where developers must manage metadata arrays separately."
+        },
+        {
+          "question": "When should a system graduate from a local vector store like Chroma to a managed service like Pinecone or Weaviate?",
+          "options": [
+            "When you want to run completely offline without internet",
+            "When multiple server instances must share the same synchronized index with high availability and replication",
+            "When the corpus has fewer than 10 documents",
+            "When you want to stop using embeddings"
+          ],
+          "correct": 1,
+          "explanation": "Local stores become an operational risk when scaled across multiple microservice replicas. Managed databases provide shared state, replication, and uptime behind an API."
+        },
+        {
+          "question": "Why must metadata fields (e.g. access_level, doc_id) be validated and attached during ingestion?",
+          "options": [
+            "Because embedding models cannot run without metadata",
+            "Because vector stores cannot filter on fields that were never indexed, risking authorization leakage or requiring full re-indexing",
+            "Because metadata reduces vector dimensions",
+            "Because metadata is required by the Python interpreter"
+          ],
+          "correct": 1,
+          "explanation": "If metadata is omitted at ingest time, query-time filtering cannot be enforced. Adding fields later requires re-embedding and re-indexing the corpus."
+        },
+        {
+          "question": "What is the \"Restart Verification Test\" for vector databases?",
+          "options": [
+            "Rebooting the developer laptop to clear RAM caches",
+            "Running a query, restarting the process, and verifying that state and filters persist without full rebuilds",
+            "Deleting the database and re-creating it on every call",
+            "Checking if the server power cord is plugged in"
+          ],
+          "correct": 1,
+          "explanation": "Running a query, restarting the process, and re-querying tests whether the database provides true persistence and whether startup build times remain acceptable."
+        }
+      ]
+    },
+
+    {
+      "id": "chunking-hybrid-search",
+      "title": "Chunking Strategies & Hybrid Search",
+      "subtitle": "Optimize chunk size, overlap, structure-aware splitting, and lexical-dense hybrid retrieval",
+      "icon": "🔀",
+      "color": "#06B6D4",
+      "gradient": "linear-gradient(135deg, #06B6D4, #10B981)",
+      "sections": [
+        {
+          "id": "chunking-strategies",
+          "title": "Choosing a Chunking Strategy",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to optimize text chunking and apply hybrid search techniques to improve retrieval accuracy in AI pipelines. Understand how chunk size, overlap, and metadata filters affect search results and relevance in question answering and document summarization tasks.</p>\n\n          <p>The same internal docs corpus needs to answer two very different requests. One query asks for a <strong>precise fact</strong> (e.g. an error code definition), while another asks for a <strong>section-level summary</strong>, and both must fit inside a limited context window.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">📏</span>\n            <span class=\"rule-text\"><strong>Chunk Size Tradeoff:</strong> When chunks are <em>tiny</em>, the top hit mentions the topic but omits the defining sentence because the boundary cut it out. When chunks are <em>huge</em>, the top result contains the answer but drags in neighboring sections, adding noise and unstable citations.</span>\n          </div>\n\n          <h3>Chunking Comparison Dimension</h3>\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Comparison Dimension</th>\n                  <th>Fixed-Size + Overlap</th>\n                  <th style=\"color: var(--accent-emerald);\">Structure-Aware</th>\n                  <th>Semantic Splitting</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Answer containment</strong></td>\n                  <td>High</td>\n                  <td style=\"color: var(--accent-emerald);\">Very high</td>\n                  <td>High</td>\n                </tr>\n                <tr>\n                  <td><strong>Noise level</strong></td>\n                  <td style=\"color: var(--accent-rose);\">High</td>\n                  <td style=\"color: var(--accent-emerald);\">Low</td>\n                  <td>Medium</td>\n                </tr>\n                <tr>\n                  <td><strong>Implementation complexity</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">Low</td>\n                  <td>Medium</td>\n                  <td style=\"color: var(--accent-rose);\">High</td>\n                </tr>\n                <tr>\n                  <td><strong>Typical failure symptom</strong></td>\n                  <td>Broken facts at boundaries</td>\n                  <td>Oversized or tiny sections</td>\n                  <td>Overfragmented topics</td>\n                </tr>\n                <tr>\n                  <td><strong>Decision rule</strong></td>\n                  <td>Use when structure is weak</td>\n                  <td>Use when headings matter</td>\n                  <td>Use for mixed topics</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n        "
+        },
+        {
+          "id": "chunking-overlap",
+          "title": "Overlap as a Recall Knob",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>After choosing a splitting method, <strong>overlap becomes the control that trades missing context for repeated context</strong>. Increasing overlap raises the chance that a boundary-straddling sentence appears fully inside at least one chunk, but the same overlap also creates near-duplicates that can fill top-k with redundant evidence.</p>\n\n          <div class=\"tip-box\">\n            <p><strong>📊 Measurable Signal:</strong> Track the duplicate rate inside the retrieved set. If multiple top-k chunks share most sentences or share the same <code>section_id</code> plus adjacent offsets, the retrieval step is wasting context budget on repetition. Adjust overlap downward or increase chunk size slightly!</p>\n          </div>\n        "
+        },
+        {
+          "id": "chunking-hybrid-search",
+          "title": "Hybrid Search for Rare Tokens",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Even with well-formed chunks, vector similarity may miss exact strings such as incident IDs, error codes, configuration keys, or file paths. When a query combines a rare token with a paraphrase, <strong>hybrid search combines lexical and vector search signals</strong>.</p>\n\n          <p>Consider a query like: <em>\"Find why E4137 happens when exporting reports, and how to mitigate it.\"</em> The lexical path surfaces chunks literally containing <code>E4137</code>, while the vector path surfaces passages describing export failures and mitigations even if they omit the code. Merging candidates ensures top-k includes both!</p>\n\n          <div class=\"flow-diagram\">\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-amber);\">\n              <span class=\"flow-step-icon\">🔤</span>\n              <span class=\"flow-step-label\">Lexical Search (BM25) → Captures \"E4137\"</span>\n            </div>\n            <span class=\"flow-arrow\">➕</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-blue);\">\n              <span class=\"flow-step-icon\">🧠</span>\n              <span class=\"flow-step-label\">Vector Search (Dense) → Captures \"export mitigation\"</span>\n            </div>\n            <span class=\"flow-arrow\">＝</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-emerald);\">\n              <span class=\"flow-step-icon\">⚡</span>\n              <span class=\"flow-step-label\">Hybrid Merged Top-k: Both Definition &amp; Solution!</span>\n            </div>\n          </div>\n        "
+        },
+        {
+          "id": "chunking-metadata-filtering",
+          "title": "Metadata Scope Assertions & Implementation",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Tag each chunk with fields that reflect how the corpus is used, then apply filters to shrink the search space so similarity scoring runs against the right subset:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — filtered_retrieval.py</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"cmt\"># Chunks carry metadata: doc_id, section, access_level, updated_at</span>\n<span class=\"var\">filtered_retriever</span> = <span class=\"var\">vectorstore</span>.<span class=\"fn\">as_retriever</span>(\n    <span class=\"var\">search_kwargs</span>={\n        <span class=\"str\">\"k\"</span>: <span class=\"num\">5</span>,\n        <span class=\"str\">\"filter\"</span>: {\n            <span class=\"str\">\"$and\"</span>: [\n                {<span class=\"str\">\"doc_id\"</span>: {<span class=\"str\">\"$eq\"</span>: <span class=\"str\">\"API-AUTH-201\"</span>}},\n                {<span class=\"str\">\"access_level\"</span>: {<span class=\"str\">\"$eq\"</span>: <span class=\"str\">\"public\"</span>}},\n            ]\n        },\n    }\n)\n\n<span class=\"var\">results</span> = <span class=\"var\">filtered_retriever</span>.<span class=\"fn\">invoke</span>(<span class=\"str\">\"How does token refresh work?\"</span>)\n\n<span class=\"kw\">def</span> <span class=\"fn\">assert_in_scope</span>(<span class=\"var\">results</span>, <span class=\"var\">doc_id</span>=<span class=\"kw\">None</span>, <span class=\"var\">section</span>=<span class=\"kw\">None</span>, <span class=\"var\">access_level</span>=<span class=\"kw\">None</span>):\n    <span class=\"kw\">for</span> <span class=\"var\">r</span> <span class=\"kw\">in</span> <span class=\"var\">results</span>:\n        <span class=\"kw\">if</span> <span class=\"var\">doc_id</span> <span class=\"kw\">and</span> <span class=\"var\">r</span>.<span class=\"var\">metadata</span>[<span class=\"str\">\"doc_id\"</span>] != <span class=\"var\">doc_id</span>:\n            <span class=\"kw\">raise</span> <span class=\"type\">AssertionError</span>(<span class=\"str\">f\"unexpected doc_id: {r.metadata['doc_id']}\"</span>)\n        <span class=\"kw\">if</span> <span class=\"var\">section</span> <span class=\"kw\">and</span> <span class=\"var\">r</span>.<span class=\"var\">metadata</span>.<span class=\"fn\">get</span>(<span class=\"str\">\"section\"</span>) != <span class=\"var\">section</span>:\n            <span class=\"kw\">raise</span> <span class=\"type\">AssertionError</span>(<span class=\"str\">f\"unexpected section: {r.metadata.get('section')}\"</span>)\n        <span class=\"kw\">if</span> <span class=\"var\">access_level</span> <span class=\"kw\">and</span> <span class=\"var\">r</span>.<span class=\"var\">metadata</span>.<span class=\"fn\">get</span>(<span class=\"str\">\"access_level\"</span>) != <span class=\"var\">access_level</span>:\n            <span class=\"kw\">raise</span> <span class=\"type\">AssertionError</span>(<span class=\"str\">f\"unexpected access_level: {r.metadata.get('access_level')}\"</span>)\n\n<span class=\"fn\">assert_in_scope</span>(<span class=\"var\">results</span>, <span class=\"var\">doc_id</span>=<span class=\"str\">\"API-AUTH-201\"</span>, <span class=\"var\">access_level</span>=<span class=\"str\">\"public\"</span>)</code></pre>\n          </div>\n        "
+        },
+        {
+          "id": "chunking-interactive",
+          "title": "Interactive Hybrid Search Sandbox",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "chunking-hybrid-sim",
+          "content": "\n          <p>Test how chunk size, overlap percentage, and hybrid BM25 + Dense vector retrieval retain rare error tokens (<code>E4137</code>):</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Compare Vector-only vs Lexical-only vs Hybrid search ranking below:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "You are preparing two retrieval setups for the same document set: (1) Factual Q&A needing pinpoint answers, and (2) Section summary needing broader views. Which pairing is the best fit?",
+          "options": [
+            "Use large fixed-size chunks with no overlap for both use cases",
+            "Use smaller chunks with light overlap for factual Q&A, and larger chunks with more context for section summary",
+            "Use sentence-level chunking for both use cases",
+            "Use one chunk per document for factual Q&A and summary tasks"
+          ],
+          "correct": 1,
+          "explanation": "Factual Q&A benefits from smaller, tightly bounded chunks that prevent irrelevant noise, while summarization requires larger chunks that encompass complete topic paragraphs."
+        },
+        {
+          "question": "Why does hybrid search combine lexical (BM25) and dense vector retrieval?",
+          "options": [
+            "Because lexical search runs on GPUs and vector search runs on CPUs",
+            "Because lexical search catches exact rare tokens (error codes, IDs), while vector search captures paraphrases and semantic concepts",
+            "Because it reduces memory usage by 90%",
+            "Because vector search cannot handle English words"
+          ],
+          "correct": 1,
+          "explanation": "Dense vector search often blurs rare, low-frequency tokens like error codes (e.g. E4137), whereas lexical search captures them verbatim."
+        },
+        {
+          "question": "What is the downside of setting chunk overlap too high (e.g. >50% of chunk size)?",
+          "options": [
+            "Chunks become completely blank",
+            "Top-k results fill up with near-duplicate sentences, wasting context window budget on repetition instead of diverse evidence",
+            "The embedding API throws an authentication error",
+            "The vector database stops persisting to disk"
+          ],
+          "correct": 1,
+          "explanation": "Excessive overlap causes adjacent chunks to repeat almost the same text, consuming top-k slots with redundant duplicate information."
+        },
+        {
+          "question": "What is the role of assert_in_scope() in retrieval pipelines?",
+          "options": [
+            "It formats the final answer into Markdown",
+            "It verifies that every retrieved chunk strictly satisfies expected metadata criteria (doc_id, access_level) to prevent permission leaks",
+            "It counts the number of syllables in the prompt",
+            "It connects to the printer"
+          ],
+          "correct": 1,
+          "explanation": "assert_in_scope() is an assertion guard that guarantees all retrieved chunks belong to the authorized document family and access level."
+        }
+      ]
+    },
+
+    {
+      "id": "rag-pipeline",
+      "title": "Building an End-to-End RAG Pipeline",
+      "subtitle": "Implement deterministic ingestion, Chroma vector search, and structured generation with verified citations",
+      "icon": "⚡",
+      "color": "#6366F1",
+      "gradient": "linear-gradient(135deg, #6366F1, #8B5CF6)",
+      "sections": [
+        {
+          "id": "rag-contract",
+          "title": "The Pipeline Reduced to Three Testable Units",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to build an end-to-end Retrieval-Augmented Generation pipeline by ingesting documents into a vector store, retrieving relevant chunks for a question, and generating answers with verified citations.</p>\n\n          <p>A working RAG flow has one observable end state. Given a question, <code>answer(question)</code> retrieves the top $k$ chunks, formats a <code>CONTEXT</code> block that labels each chunk, calls the chat model, then returns <code>{answer, citations}</code> where citations point back to retrieved chunk markers.</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — The Three Pipeline Units</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">def</span> <span class=\"fn\">ingest</span>(<span class=\"var\">documents</span>: <span class=\"type\">list</span>[<span class=\"type\">Document</span>]) -&gt; <span class=\"kw\">None</span>:\n    <span class=\"str\">\"\"\"Chunk, embed, and upsert documents into the vector store.\"\"\"</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">retrieve</span>(<span class=\"var\">question</span>: <span class=\"type\">str</span>, <span class=\"var\">k</span>: <span class=\"type\">int</span> = <span class=\"num\">4</span>, <span class=\"var\">filters</span>: <span class=\"type\">dict</span> | <span class=\"kw\">None</span> = <span class=\"kw\">None</span>) -&gt; <span class=\"type\">list</span>[<span class=\"type\">dict</span>]:\n    <span class=\"str\">\"\"\"Return top-k chunks for a question, each with metadata and a score.\"\"\"</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">answer</span>(<span class=\"var\">question</span>: <span class=\"type\">str</span>) -&gt; <span class=\"type\">dict</span>:\n    <span class=\"str\">\"\"\"Retrieve chunks, build a prompt, call model, and return {answer, citations}.\"\"\"</span></code></pre>\n          </div>\n\n          <div class=\"rule-box\">\n            <span class=\"rule-icon\">🔬</span>\n            <span class=\"rule-text\"><strong>Operational Rule:</strong> Never debug generation before you inspect retrieval. If the answer is wrong, first confirm the retrieved chunks are relevant to the question!</span>\n          </div>\n        "
+        },
+        {
+          "id": "rag-ingest-chroma",
+          "title": "Deterministic Ingestion & Persistent Chroma Storage",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Two invariants keep ingestion repeatable across runs:</p>\n          <ul class=\"concept-list\">\n            <li><strong>Stable chunk IDs:</strong> Hash chunk content with SHA-256 so the same chunk does not get duplicated on re-ingestion.</li>\n            <li><strong>Stable metadata schema:</strong> Downstream code can always read fields like <code>source</code>, <code>section</code>, and <code>chunk_id</code> without conditional logic.</li>\n          </ul>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — Chroma Ingestion Implementation</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">import</span> <span class=\"var\">hashlib</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_text_splitters</span> <span class=\"kw\">import</span> <span class=\"type\">RecursiveCharacterTextSplitter</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_huggingface</span> <span class=\"kw\">import</span> <span class=\"type\">HuggingFaceEmbeddings</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_chroma</span> <span class=\"kw\">import</span> <span class=\"type\">Chroma</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">load_and_split</span>(<span class=\"var\">source_id</span>: <span class=\"type\">str</span>, <span class=\"var\">text</span>: <span class=\"type\">str</span>, <span class=\"var\">chunk_size</span>: <span class=\"type\">int</span> = <span class=\"num\">400</span>, <span class=\"var\">overlap</span>: <span class=\"type\">int</span> = <span class=\"num\">50</span>):\n    <span class=\"var\">splitter</span> = <span class=\"type\">RecursiveCharacterTextSplitter</span>(<span class=\"var\">chunk_size</span>=<span class=\"var\">chunk_size</span>, <span class=\"var\">chunk_overlap</span>=<span class=\"var\">overlap</span>)\n    <span class=\"var\">raw_chunks</span> = <span class=\"var\">splitter</span>.<span class=\"fn\">create_documents</span>([<span class=\"var\">text</span>])\n    <span class=\"var\">docs</span> = []\n    <span class=\"kw\">for</span> <span class=\"var\">i</span>, <span class=\"var\">chunk</span> <span class=\"kw\">in</span> <span class=\"fn\">enumerate</span>(<span class=\"var\">raw_chunks</span>):\n        <span class=\"var\">content_hash</span> = <span class=\"var\">hashlib</span>.<span class=\"fn\">sha256</span>(<span class=\"var\">chunk</span>.<span class=\"var\">page_content</span>.<span class=\"fn\">encode</span>(<span class=\"str\">\"utf-8\"</span>)).<span class=\"fn\">hexdigest</span>()\n        <span class=\"var\">chunk_id</span> = <span class=\"str\">f\"{source_id}::chunk-{i:05d}::{content_hash[:16]}\"</span>\n        <span class=\"var\">chunk</span>.<span class=\"var\">metadata</span>.<span class=\"fn\">update</span>({<span class=\"str\">\"source\"</span>: <span class=\"var\">source_id</span>, <span class=\"str\">\"chunk_id\"</span>: <span class=\"var\">chunk_id</span>})\n        <span class=\"var\">docs</span>.<span class=\"fn\">append</span>(<span class=\"var\">chunk</span>)\n    <span class=\"kw\">return</span> <span class=\"var\">docs</span>\n\n<span class=\"var\">embeddings</span> = <span class=\"type\">HuggingFaceEmbeddings</span>(<span class=\"var\">model_name</span>=<span class=\"str\">\"sentence-transformers/all-MiniLM-L6-v2\"</span>)\n<span class=\"var\">vectorstore</span> = <span class=\"type\">Chroma</span>(\n    <span class=\"var\">collection_name</span>=<span class=\"str\">\"internal_docs\"</span>,\n    <span class=\"var\">embedding_function</span>=<span class=\"var\">embeddings</span>,\n    <span class=\"var\">persist_directory</span>=<span class=\"str\">\"./chroma_store\"</span>\n)\n\n<span class=\"kw\">def</span> <span class=\"fn\">ingest</span>(<span class=\"var\">documents</span>):\n    <span class=\"var\">vectorstore</span>.<span class=\"fn\">add_documents</span>(<span class=\"var\">documents</span>, <span class=\"var\">ids</span>=[<span class=\"var\">d</span>.<span class=\"var\">metadata</span>[<span class=\"str\">\"chunk_id\"</span>] <span class=\"kw\">for</span> <span class=\"var\">d</span> <span class=\"kw\">in</span> <span class=\"var\">documents</span>])</code></pre>\n          </div>\n        "
+        },
+        {
+          "id": "rag-structured-generation",
+          "title": "Structured Generation & Citation Grounding Validation",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Generation should return a structured payload shaped like <code>{answer, citations}</code> so downstream code can render sources without scraping free-form text. The validator checks that all cited chunk IDs exist in the retrieved chunk set:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — Citation Validation Guard</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">pydantic</span> <span class=\"kw\">import</span> <span class=\"type\">BaseModel</span>, <span class=\"type\">Field</span>\n<span class=\"kw\">from</span> <span class=\"var\">typing</span> <span class=\"kw\">import</span> <span class=\"type\">List</span>\n\n<span class=\"kw\">class</span> <span class=\"type\">RAGResponse</span>(<span class=\"type\">BaseModel</span>):\n    <span class=\"var\">answer</span>: <span class=\"type\">str</span> = <span class=\"fn\">Field</span>(<span class=\"var\">description</span>=<span class=\"str\">\"Answer based strictly on context.\"</span>)\n    <span class=\"var\">citations</span>: <span class=\"type\">List</span>[<span class=\"type\">str</span>] = <span class=\"fn\">Field</span>(<span class=\"var\">description</span>=<span class=\"str\">\"Exact chunk_ids used.\"</span>)\n\n<span class=\"kw\">def</span> <span class=\"fn\">validate_citations</span>(<span class=\"var\">response</span>: <span class=\"type\">RAGResponse</span>, <span class=\"var\">retrieved_chunks</span>: <span class=\"type\">list</span>) -&gt; <span class=\"type\">bool</span>:\n    <span class=\"var\">valid_ids</span> = {<span class=\"var\">c</span>[<span class=\"str\">\"chunk_id\"</span>] <span class=\"kw\">for</span> <span class=\"var\">c</span> <span class=\"kw\">in</span> <span class=\"var\">retrieved_chunks</span>}\n    <span class=\"var\">cited_ids</span> = <span class=\"fn\">set</span>(<span class=\"var\">response</span>.<span class=\"var\">citations</span>)\n    <span class=\"kw\">if</span> <span class=\"kw\">not</span> <span class=\"var\">cited_ids</span>:\n        <span class=\"kw\">return</span> <span class=\"kw\">False</span>\n    <span class=\"var\">invalid</span> = <span class=\"var\">cited_ids</span> - <span class=\"var\">valid_ids</span>\n    <span class=\"kw\">if</span> <span class=\"var\">invalid</span>:\n        <span class=\"fn\">print</span>(<span class=\"str\">f\"Validation failed! Cited unretrieved chunks: {invalid}\"</span>)\n        <span class=\"kw\">return</span> <span class=\"kw\">False</span>\n    <span class=\"kw\">return</span> <span class=\"kw\">True</span></code></pre>\n          </div>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🛑</span>\n            <span class=\"rule-text\"><strong>Operational Rule:</strong> Reject any response whose citations cannot be mapped to the exact chunks used to build the prompt!</span>\n          </div>\n        "
+        },
+        {
+          "id": "rag-full-python-code",
+          "title": "Complete Executable RAG Pipeline Script",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Here is the complete production RAG script with multi-topic corpus, persistent Chroma vector database, Gemini 2.5 Flash, and grounding verification:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — complete_rag_pipeline.py</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">import</span> <span class=\"var\">os</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_google_genai</span> <span class=\"kw\">import</span> <span class=\"type\">ChatGoogleGenerativeAI</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_core.prompts</span> <span class=\"kw\">import</span> <span class=\"type\">ChatPromptTemplate</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">answer</span>(<span class=\"var\">question</span>: <span class=\"type\">str</span>, <span class=\"var\">k</span>: <span class=\"type\">int</span> = <span class=\"num\">2</span>):\n    <span class=\"cmt\"># 1. Retrieve</span>\n    <span class=\"var\">chunks</span> = <span class=\"fn\">retrieve</span>(<span class=\"var\">question</span>, <span class=\"var\">k</span>=<span class=\"var\">k</span>)\n    <span class=\"kw\">if</span> <span class=\"kw\">not</span> <span class=\"var\">chunks</span>:\n        <span class=\"kw\">return</span> {<span class=\"str\">\"answer\"</span>: <span class=\"str\">\"No relevant context found.\"</span>, <span class=\"str\">\"citations\"</span>: [], <span class=\"str\">\"validated\"</span>: <span class=\"kw\">False</span>}\n    \n    <span class=\"cmt\"># 2. Build Context</span>\n    <span class=\"var\">context_str</span> = <span class=\"str\">\"\\n\\n\"</span>.<span class=\"fn\">join</span>([\n        <span class=\"str\">f\"--- CHUNK ID: {c['chunk_id']} | SOURCE: {c['source']} ---\\n{c['text']}\"</span>\n        <span class=\"kw\">for</span> <span class=\"var\">c</span> <span class=\"kw\">in</span> <span class=\"var\">chunks</span>\n    ])\n    \n    <span class=\"var\">prompt</span> = <span class=\"type\">ChatPromptTemplate</span>.<span class=\"fn\">from_messages</span>([\n        (<span class=\"str\">\"system\"</span>, <span class=\"str\">\"Answer ONLY using context. Cite exact chunk_ids.\\n\\nCONTEXT:\\n{context}\"</span>),\n        (<span class=\"str\">\"human\"</span>, <span class=\"str\">\"{question}\"</span>)\n    ])\n    \n    <span class=\"cmt\"># 3. Generate</span>\n    <span class=\"var\">llm</span> = <span class=\"type\">ChatGoogleGenerativeAI</span>(<span class=\"var\">model</span>=<span class=\"str\">\"gemini-2.5-flash\"</span>, <span class=\"var\">temperature</span>=<span class=\"num\">0</span>, <span class=\"var\">api_key</span>=<span class=\"var\">os</span>.<span class=\"var\">environ</span>[<span class=\"str\">\"GEMINI_API_KEY\"</span>])\n    <span class=\"var\">structured_llm</span> = <span class=\"var\">llm</span>.<span class=\"fn\">with_structured_output</span>(<span class=\"type\">RAGResponse</span>)\n    <span class=\"var\">response</span> = <span class=\"var\">structured_llm</span>.<span class=\"fn\">invoke</span>(<span class=\"var\">prompt</span>.<span class=\"fn\">format_messages</span>(<span class=\"var\">context</span>=<span class=\"var\">context_str</span>, <span class=\"var\">question</span>=<span class=\"var\">question</span>))\n    \n    <span class=\"cmt\"># 4. Validate</span>\n    <span class=\"var\">is_valid</span> = <span class=\"fn\">validate_citations</span>(<span class=\"var\">response</span>, <span class=\"var\">chunks</span>)\n    <span class=\"kw\">return</span> {<span class=\"str\">\"answer\"</span>: <span class=\"var\">response</span>.<span class=\"var\">answer</span>, <span class=\"str\">\"citations\"</span>: <span class=\"var\">response</span>.<span class=\"var\">citations</span>, <span class=\"str\">\"validated\"</span>: <span class=\"var\">is_valid</span>}</code></pre>\n          </div>\n        "
+        },
+        {
+          "id": "rag-interactive-pipeline",
+          "title": "Interactive RAG Pipeline & Citation Validator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "rag-pipeline-sim",
+          "content": "\n          <p>Execute real RAG queries over multi-topic documents and observe how citation grounding prevents hallucinated claims:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Select a question below to run the retrieve-generate-validate cycle:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "A user reports a wrong answer from your RAG system. Which step should you inspect first, and what artifact should you log to debug it?",
+          "options": [
+            "Inspect only the model response; no other artifact is needed",
+            "Inspect retrieved_chunks first and log the retrieved chunks for debugging",
+            "Inspect the prompt context first and ignore retrieval details",
+            "Inspect the metadata schema first and skip the chunks"
+          ],
+          "correct": 1,
+          "explanation": "Always inspect retrieved_chunks first. If retrieval returned the wrong chunks, the model could not possibly answer correctly regardless of prompt wording."
+        },
+        {
+          "question": "Why should chunk IDs be generated deterministically using a content hash (SHA-256) plus source ID?",
+          "options": [
+            "To encrypt document text for security compliance",
+            "To ensure re-ingesting the same document overwrites chunks idempotently rather than duplicating them in the vector store",
+            "To format strings into valid JSON",
+            "To speed up cosine similarity math"
+          ],
+          "correct": 1,
+          "explanation": "Deterministic chunk IDs prevent duplicate chunks on re-ingestion and allow citations to remain stable across runs."
+        },
+        {
+          "question": "What should the pipeline do if the model cites a chunk_id that was never in the retrieved context?",
+          "options": [
+            "Display the answer anyway and ignore the citation",
+            "Reject the response as invalid (fail closed) because the citation cannot be verified against retrieved ground truth",
+            "Add the chunk_id to the database automatically",
+            "Rerun the query with temperature set to 1.0"
+          ],
+          "correct": 1,
+          "explanation": "The fail-closed rule requires rejecting any answer with citations that cannot be mapped to the exact chunks passed into the prompt."
+        },
+        {
+          "question": "What is the role of llm.with_structured_output(RAGResponse) in the pipeline?",
+          "options": [
+            "It forces the model to return both an answer and exact citation markers conforming to a strict Pydantic contract",
+            "It translates the prompt into five languages",
+            "It connects to the Chroma vector database",
+            "It decreases API costs by 100%"
+          ],
+          "correct": 0,
+          "explanation": "Enforcing structured output via Pydantic ensures the model returns a typed object containing both the answer and the explicit chunk citations."
+        }
+      ]
+    },
+
+    {
+      "id": "rag-failure-modes",
+      "title": "Common RAG Failure Modes & Sequential Debugging",
+      "subtitle": "Diagnose and fix stale indexes, bad chunking, retrieval misses, and citation drift in production",
+      "icon": "🩺",
+      "color": "#EF4444",
+      "gradient": "linear-gradient(135deg, #EF4444, #F59E0B)",
+      "sections": [
+        {
+          "id": "rag-sequential-triage",
+          "title": "Sequential Debugging: The Diagnostic Map",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to diagnose and fix common failure modes in retrieval-augmented generation pipelines. Understand how to debug each pipeline stage sequentially, verify chunk integrity, ensure index freshness, and refine retrieval queries.</p>\n\n          <p>The answer claims the policy was updated last week and cites a specific source, but the retrieved chunk we inspect shows an older policy version. Nothing is ambiguous in the symptom: the mismatch is visible in two places: the answer text and the retrieved evidence block.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🩺</span>\n            <span class=\"rule-text\"><strong>Rule of Thumb:</strong> Debug the pipeline, not the prompt! If the model cannot see the right context, it cannot use it. Always debug in strict pipeline order: Ingest/Index → Retrieve → Context Assembly → Generate/Parse.</span>\n          </div>\n\n          <h3>Symptom Diagnostic Map</h3>\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Symptom</th>\n                  <th>Most Likely Stage</th>\n                  <th>First Hypothesis</th>\n                  <th>What to Inspect</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Stale fact</strong> (Outdated answer)</td>\n                  <td>Ingest / index</td>\n                  <td>Stale index</td>\n                  <td><code>last_ingested_at</code> vs source <code>updated_at</code></td>\n                </tr>\n                <tr>\n                  <td><strong>Irrelevant citations</strong> (Mismatch)</td>\n                  <td>Retrieve</td>\n                  <td>Bad chunking</td>\n                  <td>Chunk boundaries, sentence cuts, preview text</td>\n                </tr>\n                <tr>\n                  <td><strong>Empty retrieval</strong> (No hits)</td>\n                  <td>Retrieve</td>\n                  <td>Retrieval miss</td>\n                  <td>Query embedding, filters, top-k bounds, threshold</td>\n                </tr>\n                <tr>\n                  <td><strong>Hallucinated citations</strong></td>\n                  <td>Generate / Parse</td>\n                  <td>Model citation drift</td>\n                  <td>Pydantic validator &amp; cited chunk ID membership</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n        "
+        },
+        {
+          "id": "rag-bad-chunking",
+          "title": "Bad Chunking & Structure-Aware Re-Splitting",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>When retrieval looks close but not correct, the chunk boundaries often cut the needed sentence in half or bury it under unrelated text. The symptom is specific: top-k previews mention the topic, but the one clause answering the question is missing.</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — Structure-Aware Two-Pass Splitter</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">langchain_text_splitters</span> <span class=\"kw\">import</span> <span class=\"type\">MarkdownHeaderTextSplitter</span>, <span class=\"type\">RecursiveCharacterTextSplitter</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">chunk_by_structure</span>(<span class=\"var\">text</span>: <span class=\"type\">str</span>, <span class=\"var\">chunk_size</span>: <span class=\"type\">int</span> = <span class=\"num\">240</span>, <span class=\"var\">overlap</span>: <span class=\"type\">int</span> = <span class=\"num\">40</span>) -&gt; <span class=\"type\">list</span>[<span class=\"type\">str</span>]:\n    <span class=\"var\">headers_to_split_on</span> = [(<span class=\"str\">\"#\"</span>, <span class=\"str\">\"h1\"</span>), (<span class=\"str\">\"##\"</span>, <span class=\"str\">\"h2\"</span>), (<span class=\"str\">\"###\"</span>, <span class=\"str\">\"h3\"</span>)]\n    <span class=\"var\">md_splitter</span> = <span class=\"type\">MarkdownHeaderTextSplitter</span>(<span class=\"var\">headers_to_split_on</span>=<span class=\"var\">headers_to_split_on</span>)\n    <span class=\"var\">section_docs</span> = <span class=\"var\">md_splitter</span>.<span class=\"fn\">split_text</span>(<span class=\"var\">text</span>)\n\n    <span class=\"var\">sub_splitter</span> = <span class=\"type\">RecursiveCharacterTextSplitter</span>(\n        <span class=\"var\">chunk_size</span>=<span class=\"var\">chunk_size</span>,\n        <span class=\"var\">chunk_overlap</span>=<span class=\"var\">overlap</span>,\n        <span class=\"var\">separators</span>=[<span class=\"str\">\"\\n\\n\"</span>, <span class=\"str\">\"\\n\"</span>, <span class=\"str\">\". \"</span>, <span class=\"str\">\" \"</span>],\n    )\n    <span class=\"var\">final_chunks</span> = <span class=\"var\">sub_splitter</span>.<span class=\"fn\">split_documents</span>(<span class=\"var\">section_docs</span>)\n    <span class=\"kw\">return</span> [<span class=\"var\">c</span>.<span class=\"var\">page_content</span> <span class=\"kw\">for</span> <span class=\"var\">c</span> <span class=\"kw\">in</span> <span class=\"var\">final_chunks</span>]\n\n<span class=\"kw\">def</span> <span class=\"fn\">any_chunk_contains</span>(<span class=\"var\">chunks</span>: <span class=\"type\">list</span>[<span class=\"type\">str</span>], <span class=\"var\">expected_line</span>: <span class=\"type\">str</span>) -&gt; <span class=\"type\">bool</span>:\n    <span class=\"kw\">return</span> <span class=\"fn\">any</span>(<span class=\"var\">expected_line</span> <span class=\"kw\">in</span> <span class=\"var\">chunk</span> <span class=\"kw\">for</span> <span class=\"var\">chunk</span> <span class=\"kw\">in</span> <span class=\"var\">chunks</span>)</code></pre>\n          </div>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Verification Rule:</strong> After any chunking change, re-run a golden query set with <code>any_chunk_contains()</code> to assert that every critical sentence survived chunking intact!</p>\n          </div>\n        "
+        },
+        {
+          "id": "rag-stale-index",
+          "title": "Stale Index Detection & Freshness Markers",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>If retrieval returns a relevant chunk but it is the wrong version, the index is often stale. Validate the hypothesis by comparing two timestamps and one count:</p>\n          <ul class=\"concept-list\">\n            <li>1️⃣ Compare source document's update time to retrieved chunk's <code>updated_at</code></li>\n            <li>2️⃣ Check collection <code>last_ingested_at</code> marker</li>\n            <li>3️⃣ Verify collection item count matches the source system</li>\n          </ul>\n\n          <div class=\"rule-box\">\n            <span class=\"rule-icon\">🕒</span>\n            <span class=\"rule-text\"><strong>Staleness Rule:</strong> If <code>last_ingested_at</code> is older than the newest source <code>updated_at</code>, treat any grounded answer as suspect until re-ingest completes!</span>\n          </div>\n        "
+        },
+        {
+          "id": "rag-production-trace",
+          "title": "The Production Debugging Contract: 5-Boundary Trace",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Every RAG request should be able to emit a structured trace across five key execution boundaries:</p>\n\n          <div class=\"info-grid\">\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">1️⃣</span>\n              <span class=\"info-card-title\">Request Context</span>\n              <span class=\"info-card-desc\"><code>request_id</code>, raw query string, and applied metadata filters.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">2️⃣</span>\n              <span class=\"info-card-title\">Retrieval Logs</span>\n              <span class=\"info-card-desc\">Configured <code>top_k</code>, chunk IDs with source URLs, retrieval method, score threshold.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">3️⃣</span>\n              <span class=\"info-card-title\">Context Metrics</span>\n              <span class=\"info-card-desc\"><code>tokens_estimate</code>, <code>context_chars</code>, chunks included, truncation flags.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">4️⃣</span>\n              <span class=\"info-card-title\">Index Freshness</span>\n              <span class=\"info-card-desc\"><code>index_version</code>, <code>last_ingested_at</code>, ingestion lag minutes.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">5️⃣</span>\n              <span class=\"info-card-title\">Validation Flags</span>\n              <span class=\"info-card-desc\"><code>citation_integrity</code> status (PASS/FAIL), missing citations count.</span>\n            </div>\n          </div>\n        "
+        },
+        {
+          "id": "rag-interactive-debugger",
+          "title": "Interactive RAG Pipeline Triage Workbench",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "rag-debugger-sim",
+          "content": "\n          <p>Triage and isolate real RAG failures across stale indexes, bad chunk boundaries, and retrieval misses:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Select a failure scenario below to inspect trace evidence and verify production fixes:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "When investigating a wrong answer from a RAG system, what is the correct sequence of stages to test?",
+          "options": [
+            "Generate / Parse → Ingest / Index → Retrieve → Context Assembly",
+            "Ingest / Index → Retrieve → Context Assembly → Generate / Parse",
+            "Prompt rewriting → Model fine-tuning → API key rotation",
+            "CSS styling → Frontend rendering → Database indexing"
+          ],
+          "correct": 1,
+          "explanation": "Always test in strict pipeline order: Ingest/Index (freshness), Retrieve (chunk quality & relevance), Context Assembly (packing & filtering), then Generate/Parse."
+        },
+        {
+          "question": "What is the primary indicator of a stale index failure mode?",
+          "options": [
+            "The embedding API returns a 500 status code",
+            "The retrieved chunk metadata updated_at is older than the source document update timestamp",
+            "The model generates responses in Spanish",
+            "The prompt token count exceeds 100,000"
+          ],
+          "correct": 1,
+          "explanation": "A stale index occurs when the vector store was not refreshed after source documents were modified, evidenced by old updated_at timestamps."
+        },
+        {
+          "question": "If top-k previews mention the right general topic but the specific clause answering the question is missing, what is the most likely root cause?",
+          "options": [
+            "The language model temperature is too high",
+            "Bad chunking: chunk boundaries cut the sentence mid-clause across two adjacent chunks",
+            "The vector database crashed",
+            "The user typed in all capital letters"
+          ],
+          "correct": 1,
+          "explanation": "When previews look close but omit the key line, chunk boundaries split the required sentence across chunks. Fix with structure-aware splitting or increased overlap."
+        },
+        {
+          "question": "What should a production RAG system do if generated citations do not match retrieved evidence?",
+          "options": [
+            "Silently strip the citations and return the answer",
+            "Fail closed: mark the run as a pipeline failure and log missing/unsupported citations",
+            "Invent a new document URL to satisfy the citation",
+            "Double the user subscription price"
+          ],
+          "correct": 1,
+          "explanation": "Failing closed prevents ungrounded hallucinations from reaching users and flags the run in observability dashboards."
+        }
+      ]
+    }
   ]
 };
 
@@ -1682,6 +2147,9 @@ const ACHIEVEMENTS = [
   { id: 'twenty_sections', name: 'AI Architect', desc: 'Complete 20 sections', icon: '⚡', xpReward: 100 },
   { id: 'twenty_five_sections', name: 'Prompt Engineer', desc: 'Complete 25 sections', icon: '🛡️', xpReward: 120 },
   { id: 'thirty_sections', name: 'Production Commander', desc: 'Complete 30 sections', icon: '🚀', xpReward: 150 },
+  { id: 'thirty_five_sections', name: 'Vector Specialist', desc: 'Complete 35 sections', icon: '🎯', xpReward: 180 },
+  { id: 'forty_sections', name: 'RAG Master', desc: 'Complete 40 sections', icon: '⚡', xpReward: 200 },
+  { id: 'all_sections_complete', name: 'Grandmaster AI Architect', desc: 'Complete all course sections', icon: '👑', xpReward: 250 },
   { id: 'cost_optimizer', name: 'Budget Enforcer', desc: 'Used the Cost & Latency Explorer', icon: '🧮', xpReward: 35 },
   { id: 'env_secured', name: 'Security Guard', desc: 'Secured environment variables and API keys', icon: '🛡️', xpReward: 35 },
   { id: 'all_quizzes', name: 'Quiz Champion', desc: 'Complete all quizzes', icon: '🏅', xpReward: 80 },
