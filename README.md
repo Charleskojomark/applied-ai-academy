@@ -13,11 +13,14 @@ Modern AI development has moved beyond making basic API calls to constructing co
 - **Automatic Cloud Sync**: Real-time progress synchronization on section completions and quiz milestones.
 
 ## 📚 Curriculum Modules
-- **Module 0: Welcome to Applied AI Engineering** — Production challenges, end-to-end application lifecycle, and defense-in-depth principles.
-- **Module 1: Selecting the Right LLM** — Hosted APIs vs. open-weight self-hosting decision framework, governance constraints, and latency envelopes.
-- **Module 2: How LLMs Work** — Step-by-step pipeline: Tokenization, vector embeddings, attention weighting, and sampling generation. Includes interactive tokenizer and attention visualizer.
-- **Module 3: Context, Cost, and Latency** — The Triple Constraint, truncation behaviors (FIFO, Summarization, Selective RAG), the Placement Rule, token economics formula ($T = C \cdot (I + O)$), and the interactive Normalized Cost & Latency Explorer.
-- **Module 4: Environment Setup & Client Boundary** — Secrets management invariant, thin client boundary adapter pattern, fail-fast validation guards, Google Gen AI SDK integration, and interactive virtual environment sandbox.
+39 modules spanning the full applied AI engineering lifecycle, including:
+- **Foundations** — Applied AI engineering overview, selecting the right LLM, how LLMs work (tokenization, embeddings, attention, sampling), and context/cost/latency tradeoffs.
+- **Prompting & Structured Behavior** — Environment setup, instruction hierarchy, few-shot & chain-of-thought, structured outputs & function calling, prompt testing and versioning.
+- **Retrieval & Agents** — Embeddings & vector similarity, vector databases, chunking & hybrid search, end-to-end RAG pipelines, RAG failure debugging, tool use, agent frameworks, reasoning/planning/memory, and building a production agent.
+- **Fine-Tuning & Evaluation** — Fine-tune vs. prompt vs. RAG, parameter-efficient fine-tuning (LoRA/QLoRA), dataset preparation, fine-tune evaluation, building LLM eval sets, automated evaluation, A/B testing, and hallucination handling.
+- **Productionization** — Wrapping models in APIs, caching/limits/costs, logging & observability, and CI/CD for AI apps.
+- **Multimodal** — Vision-language models, image generation & editing, speech integration, and multimodal pipeline integration.
+- **Safety & Responsible AI** — Adversarial prompt safety, data privacy & PII handling, bias & fairness, guardrails & content moderation, and a capstone conclusion.
 
 ## 🎮 Gamification Features
 - **XP Progression & Levels**: Level up from Novice to Grandmaster.
