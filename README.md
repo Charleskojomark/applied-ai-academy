@@ -1,11 +1,16 @@
 # ⚡ Applied AI Academy
 
-An interactive, gamified learning platform for **Applied AI Engineering**. Master production-grade AI application development through visual architectures, interactive simulators, production code patterns, in-person practice labs, and knowledge-check quizzes.
+An interactive, gamified serverless learning platform for **Applied AI Engineering**. Master production-grade AI application development through visual architectures, interactive simulators, production code patterns, in-person practice labs, and knowledge-check quizzes.
 
 ## 🚀 Overview
 Modern AI development has moved beyond making basic API calls to constructing complete application systems that coordinate multi-step tasks, pull context from varied sources, and operate within strict performance, cost, and security guidelines.
 
-**Applied AI Academy** provides a visual, gamified, and code-ready platform to master these engineering skills.
+**Applied AI Academy** provides a visual, gamified, and code-ready platform to master these engineering skills, with persistent user profiles and progress tracking powered by **Neon PostgreSQL**.
+
+## ☁️ Neon PostgreSQL Serverless Integration
+- **Zero-Friction Callsign Creation**: Simple username registration (`@callsign`) requiring no passwords or friction.
+- **Serverless PostgreSQL**: Stores user profiles, XP, level, streak, completed sections, and quiz scores in Neon AWS `us-east-2`.
+- **Automatic Cloud Sync**: Real-time progress synchronization on section completions and quiz milestones.
 
 ## 📚 Curriculum Modules
 - **Module 0: Welcome to Applied AI Engineering** — Production challenges, end-to-end application lifecycle, and defense-in-depth principles.
@@ -21,7 +26,7 @@ Modern AI development has moved beyond making basic API calls to constructing co
 - **In-Person Practice Labs**: Local coding exercises with clickable self-verification checklists.
 
 ## 🛠️ Tech Stack
-- **HTML5 & Semantic Structure**
-- **Vanilla CSS (Modern Dark Glassmorphic Design System)**
-- **Vanilla JavaScript (Modular ES6+)**
-- **Zero build steps — Instant deployment**
+- **Framework**: Next.js 16 (App Router)
+- **Database**: Neon PostgreSQL Serverless (`@neondatabase/serverless`)
+- **Styling**: Vanilla CSS (Modern Dark Glassmorphic Design System)
+- **Deployment**: Vercel Serverless Functions

@@ -1,4 +1,3 @@
 {
-  "name": "applied-ai-academy",
-  "cleanUrls": true
+  "framework": "nextjs"
 }

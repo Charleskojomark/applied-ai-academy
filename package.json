@@ -1,0 +1,29 @@
+{
+  "name": "applied-ai-academy",
+  "version": "1.0.0",
+  "description": "An interactive, gamified learning platform for **Applied AI Engineering**. Master production-grade AI application development through visual architectures, interactive simulators, production code patterns, in-person practice labs, and knowledge-check quizzes.",
+  "main": "app.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Charleskojomark/applied-ai-academy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Charleskojomark/applied-ai-academy/issues"
+  },
+  "homepage": "https://github.com/Charleskojomark/applied-ai-academy#readme",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "next": "^16.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}
