@@ -3422,19 +3422,37 @@ pre code {
     .data-table-wrap {
         margin: 14px 0;
         border-radius: var(--radius-sm);
-        max-width: 100%;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        box-sizing: border-box !important;
+    }
+    .data-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        table-layout: fixed !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
     }
     .data-table th, .data-table td {
-        padding: 10px 12px;
-        font-size: 0.76rem;
+        padding: 8px 10px;
+        font-size: 0.74rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
     .code-block {
         margin: 14px 0;
-        max-width: 100%;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden;
     }
     .code-header {
         padding: 8px 12px;
+        max-width: 100%;
+        box-sizing: border-box;
     }
     .code-copy {
         padding: 5px 12px;
@@ -3445,8 +3463,19 @@ pre code {
         padding: 12px;
         font-size: 0.76rem;
         line-height: 1.6;
-        max-width: 100%;
-        -webkit-overflow-scrolling: touch;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        white-space: pre-wrap !important;
+        word-break: break-all !important;
+        overflow-wrap: anywhere !important;
+    }
+    pre code {
+        display: block !important;
+        max-width: 100% !important;
+        white-space: pre-wrap !important;
+        word-break: break-all !important;
+        overflow-wrap: anywhere !important;
     }
     .rule-box, .warning-box, .tip-box {
         padding: 14px;
