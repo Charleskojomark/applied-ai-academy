@@ -18,6 +18,7 @@ const APP_STATE = {
 document.addEventListener('DOMContentLoaded', () => {
   loadProgress();
   injectSVGDefs();
+  closeMobileSidebar();
   renderSidebar();
   renderDashboard();
   bindGlobalEvents();
@@ -1541,9 +1542,20 @@ function bindGlobalEvents() {
     }
   });
 
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('sidebar');
+    const hamburger = document.getElementById('hamburgerBtn');
+    if (sidebar && sidebar.classList.contains('open')) {
+      if (!sidebar.contains(e.target) && !hamburger?.contains(e.target)) {
+        closeMobileSidebar();
+      }
+    }
+  });
+
   // Handle window resize: close mobile sidebar when returning to desktop
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 768) {
+    if (window.innerWidth > 1024) {
       closeMobileSidebar();
     }
   });
