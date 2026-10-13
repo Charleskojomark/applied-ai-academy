@@ -2098,6 +2098,385 @@ Avoid jargon. Keep it simple.</code></pre>
         }
       ]
     }
+,
+    {
+      "id": "function-calling-tools",
+      "title": "Function Calling & Tool Use",
+      "subtitle": "Enforce strict schema contracts, allowlists, runtime guardrails, and bounded tool budgets",
+      "icon": "🛠️",
+      "color": "#F59E0B",
+      "gradient": "linear-gradient(135deg, #F59E0B, #10B981)",
+      "sections": [
+        {
+          "id": "tools-boundary-contracts",
+          "title": "The Executable Boundary & Machine-Checkable Contracts",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to safely handle function calls and tool integrations in AI systems by enforcing strict validation, schema contracts, and runtime constraints. Understand how to validate tool arguments, enforce allowlists, and manage retries to maintain predictable and secure tool usage in production environments.</p>\n\n          <p>When a model output crosses the API boundary and becomes executable action, the risky part is not generation. The risky part is accepting a tool call payload that our system cannot validate deterministically before it touches retrieval, files, or networks.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🛡️</span>\n            <span class=\"rule-text\"><strong>The Fundamental Rule:</strong> If the tool payload cannot be validated deterministically, <em>do not execute the tool</em>. The tool call must name an allowlisted tool, and its arguments must satisfy a schema that rejects missing fields, wrong types, and unexpected keys.</span>\n          </div>\n\n          <h3>Structured JSON Output vs Tool Call</h3>\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Comparison Axis</th>\n                  <th>Structured JSON Output</th>\n                  <th style=\"color: var(--accent-purple);\">Tool Call</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Execution risk</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">Low (Data only)</td>\n                  <td style=\"color: var(--accent-rose);\">High (Side effects / Executable)</td>\n                </tr>\n                <tr>\n                  <td><strong>Preconditions &amp; validation</strong></td>\n                  <td>Validate schema only</td>\n                  <td>Validate schema plus system state</td>\n                </tr>\n                <tr>\n                  <td><strong>Observability &amp; traces</strong></td>\n                  <td>Minimal trace needs</td>\n                  <td>Audit logs &amp; attempt IDs required</td>\n                </tr>\n                <tr>\n                  <td><strong>Failure mode</strong></td>\n                  <td>Parse or schema error</td>\n                  <td>Unsafe action, drift, or timeout</td>\n                </tr>\n                <tr>\n                  <td><strong>Production contract</strong></td>\n                  <td>Loose output contract</td>\n                  <td>Versioned API contract</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n        "
+        },
+        {
+          "id": "tools-bounded-router",
+          "title": "The Bounded Tool Router State Machine",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>A robust router turns model outputs into controlled tool attempts. The router should enforce a small set of invariants before any execution begins:</p>\n\n          <ul class=\"concept-list\">\n            <li>1️⃣ <strong>Allowlist tool names:</strong> Reject anything else, even if the payload is well-formed.</li>\n            <li>2️⃣ <strong>Validate arguments:</strong> Assert arguments against the schema with <code>additionalProperties: False</code> so stray keys get rejected immediately.</li>\n            <li>3️⃣ <strong>Attach Correlation IDs:</strong> Attach a <code>correlation_id</code> per user request and a <code>tool_attempt_id</code> per tool call, logging start/end times and status.</li>\n            <li>4️⃣ <strong>Normalize tool errors:</strong> Convert errors into a stable shape like <code>{code, message, retryable}</code> so retry logic does not depend on string parsing.</li>\n            <li>5️⃣ <strong>Enforce tool budgets:</strong> Decrement a per-request tool budget; stop deterministically when the budget hits zero.</li>\n          </ul>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-amber);\">\n            <span class=\"rule-icon\">🛑</span>\n            <span class=\"rule-text\"><strong>Operational Invariant:</strong> Enforce a max tool-call budget per request, and stop deterministically when the budget hits zero or a non-retryable error occurs!</span>\n          </div>\n        "
+        },
+        {
+          "id": "tools-retrieval-as-tool",
+          "title": "Retrieval as an Agent Tool & Context Assembly",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>A retrieval tool contract should make the output usable for citations, not just for prose. Assemble context by sorting deterministically, removing duplicates by <code>doc_id</code>, and truncating by a tight character budget:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — context_assembler.py</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">dataclasses</span> <span class=\"kw\">import</span> <span class=\"type\">dataclass</span>\n\n<span class=\"var\">RETRIEVE_TOOL_SCHEMA</span> = {\n    <span class=\"str\">\"name\"</span>: <span class=\"str\">\"retrieve\"</span>,\n    <span class=\"str\">\"description\"</span>: <span class=\"str\">\"Retrieve relevant documents for a query.\"</span>,\n    <span class=\"str\">\"parameters\"</span>: {\n        <span class=\"str\">\"type\"</span>: <span class=\"str\">\"object\"</span>,\n        <span class=\"str\">\"additionalProperties\"</span>: <span class=\"kw\">False</span>,\n        <span class=\"str\">\"properties\"</span>: {\n            <span class=\"str\">\"query\"</span>: {<span class=\"str\">\"type\"</span>: <span class=\"str\">\"string\"</span>, <span class=\"str\">\"description\"</span>: <span class=\"str\">\"Search query.\"</span>},\n            <span class=\"str\">\"top_k\"</span>: {<span class=\"str\">\"type\"</span>: <span class=\"str\">\"integer\"</span>, <span class=\"str\">\"description\"</span>: <span class=\"str\">\"Max results.\"</span>},\n            <span class=\"str\">\"filters\"</span>: {<span class=\"str\">\"type\"</span>: <span class=\"str\">\"object\"</span>, <span class=\"str\">\"description\"</span>: <span class=\"str\">\"Optional filters.\"</span>},\n        },\n        <span class=\"str\">\"required\"</span>: [<span class=\"str\">\"query\"</span>, <span class=\"str\">\"top_k\"</span>],\n    },\n}\n\n<span class=\"op\">@</span><span class=\"fn\">dataclass</span>(<span class=\"var\">frozen</span>=<span class=\"kw\">True</span>)\n<span class=\"kw\">class</span> <span class=\"type\">Document</span>:\n    <span class=\"var\">doc_id</span>: <span class=\"type\">str</span>\n    <span class=\"var\">text</span>: <span class=\"type\">str</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">dedupe_by_doc_id</span>(<span class=\"var\">docs</span>: <span class=\"type\">list</span>[<span class=\"type\">Document</span>]) -&gt; <span class=\"type\">list</span>[<span class=\"type\">Document</span>]:\n    <span class=\"var\">seen</span>: <span class=\"type\">set</span>[<span class=\"type\">str</span>] = <span class=\"fn\">set</span>()\n    <span class=\"var\">kept</span>: <span class=\"type\">list</span>[<span class=\"type\">Document</span>] = []\n    <span class=\"kw\">for</span> <span class=\"var\">d</span> <span class=\"kw\">in</span> <span class=\"var\">docs</span>:\n        <span class=\"kw\">if</span> <span class=\"var\">d</span>.<span class=\"var\">doc_id</span> <span class=\"kw\">not</span> <span class=\"kw\">in</span> <span class=\"var\">seen</span>:\n            <span class=\"var\">seen</span>.<span class=\"fn\">add</span>(<span class=\"var\">d</span>.<span class=\"var\">doc_id</span>)\n            <span class=\"var\">kept</span>.<span class=\"fn\">append</span>(<span class=\"var\">d</span>)\n    <span class=\"kw\">return</span> <span class=\"var\">kept</span>\n\n<span class=\"kw\">def</span> <span class=\"fn\">context_assemble</span>(<span class=\"var\">docs</span>: <span class=\"type\">list</span>[<span class=\"type\">Document</span>], <span class=\"var\">max_chars</span>: <span class=\"type\">int</span> = <span class=\"num\">2000</span>) -&gt; <span class=\"type\">str</span>:\n    <span class=\"var\">parts</span> = [<span class=\"str\">\"BEGIN CONTEXT\\n\"</span>]\n    <span class=\"var\">used</span> = <span class=\"fn\">len</span>(<span class=\"var\">parts</span>[<span class=\"num\">0</span>])\n    <span class=\"kw\">for</span> <span class=\"var\">doc</span> <span class=\"kw\">in</span> <span class=\"fn\">dedupe_by_doc_id</span>(<span class=\"var\">docs</span>):\n        <span class=\"var\">segment</span> = <span class=\"str\">f'[{doc.doc_id}]\\n\"{doc.text}\"\\n\\n'</span>\n        <span class=\"kw\">if</span> <span class=\"var\">used</span> + <span class=\"fn\">len</span>(<span class=\"var\">segment</span>) &gt; <span class=\"var\">max_chars</span>:\n            <span class=\"kw\">break</span>  <span class=\"cmt\"># Drop, don't fragment mid-sentence</span>\n        <span class=\"var\">parts</span>.<span class=\"fn\">append</span>(<span class=\"var\">segment</span>)\n        <span class=\"var\">used</span> += <span class=\"fn\">len</span>(<span class=\"var\">segment</span>)\n    <span class=\"var\">parts</span>.<span class=\"fn\">append</span>(<span class=\"str\">\"END CONTEXT\\n\"</span>)\n    <span class=\"kw\">return</span> <span class=\"str\">\"\"</span>.<span class=\"fn\">join</span>(<span class=\"var\">parts</span>)[:<span class=\"var\">max_chars</span>]</code></pre>\n          </div>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Design Rule:</strong> \"Drop, don't fragment\" is the safer default for citation integrity. A document that does not fully fit inside the budget is left out entirely rather than truncated mid-sentence.</p>\n          </div>\n        "
+        },
+        {
+          "id": "tools-guardrails-contract",
+          "title": "Three-Point Guardrail Flow & Safety Boundaries",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Put tool guardrails in three distinct execution checkpoints:</p>\n          <div class=\"info-grid\">\n            <div class=\"info-card\" style=\"border-top: 2px solid var(--accent-blue);\">\n              <span class=\"info-card-icon\">1️⃣</span>\n              <span class=\"info-card-title\">Pre-Tool Checks</span>\n              <span class=\"info-card-desc\">Validate user input against product safety policies and decide whether tools are allowed for this request.</span>\n            </div>\n            <div class=\"info-card\" style=\"border-top: 2px solid var(--accent-purple);\">\n              <span class=\"info-card-icon\">2️⃣</span>\n              <span class=\"info-card-title\">Pre-Execution Checks</span>\n              <span class=\"info-card-desc\">Validate tool name against registered allowlist and arguments against schema bounds before invoking handler.</span>\n            </div>\n            <div class=\"info-card\" style=\"border-top: 2px solid var(--accent-emerald);\">\n              <span class=\"info-card-icon\">3️⃣</span>\n              <span class=\"info-card-title\">Pre-Response Checks</span>\n              <span class=\"info-card-desc\">Validate final answer against citation markers, ensuring every cited <code>doc_id</code> exists in retrieved context.</span>\n            </div>\n          </div>\n        "
+        },
+        {
+          "id": "tools-interactive-router",
+          "title": "Interactive Tool Router & Guardrail Simulator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "tool-router-sim",
+          "content": "\n          <p>Test the tool router state machine against compliant calls, stray argument key injections, unallowlisted tools, and budget exhaustions:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Select a model proposal below to watch runtime validation and audit tracing:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "What is the fundamental rule of tool execution in production AI applications?",
+          "options": [
+            "Execute every tool call immediately to reduce network latency",
+            "If the tool payload cannot be validated deterministically, do not execute the tool",
+            "Rely on the model prompt to prevent unsafe shell execution",
+            "Only execute tools when running on a GPU"
+          ],
+          "correct": 1,
+          "explanation": "Deterministic validation is non-negotiable before privileged execution touches file systems, databases, or networks."
+        },
+        {
+          "question": "Why must tool argument schemas enforce additionalProperties: False (or extra=\"forbid\")?",
+          "options": [
+            "To ensure stray, unexpected, or injected argument keys are rejected before execution",
+            "To format strings into valid JSON",
+            "To encrypt the API keys",
+            "To decrease model temperature"
+          ],
+          "correct": 0,
+          "explanation": "Rejecting unexpected properties prevents silent parameter pollution and prompt injection attempts from passing unauthorized arguments to tool handlers."
+        },
+        {
+          "question": "In context assembly for a retrieval tool, what does the \"drop, don't fragment\" rule prescribe?",
+          "options": [
+            "Deleting the entire database when memory is full",
+            "If adding a document would exceed the character budget, omit the document completely rather than truncating it mid-sentence to preserve citation integrity",
+            "Dropping all previous user messages",
+            "Converting all words to uppercase"
+          ],
+          "correct": 1,
+          "explanation": "Leaving out a document that does not fit is safer for citation integrity than slicing text mid-sentence, which creates misleading or broken facts."
+        },
+        {
+          "question": "What are the three checkpoints where tool guardrails belong?",
+          "options": [
+            "Pre-login, post-login, and password reset",
+            "Pre-tool checks (user input), pre-execution checks (tool name & args), and pre-response checks (citations & output schema)",
+            "HTML check, CSS check, and JavaScript check",
+            "Git commit, git push, and vercel deploy"
+          ],
+          "correct": 1,
+          "explanation": "Guardrails belong before tool authorization, before tool handler execution, and before returning the final grounded response to the user."
+        }
+      ]
+    },
+
+    {
+      "id": "agent-frameworks",
+      "title": "Agent Frameworks & Orchestration",
+      "subtitle": "Evaluate custom loops, LangChain abstractions, and stateful LangGraph workflows with explicit stop conditions",
+      "icon": "🕸️",
+      "color": "#8B5CF6",
+      "gradient": "linear-gradient(135deg, #8B5CF6, #3B82F6)",
+      "sections": [
+        {
+          "id": "frameworks-stopping-rules",
+          "title": "Controlling the Research Assistant & Stop Conditions",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to implement and manage agent frameworks that safely control tool usage in AI applications. Understand the importance of explicit stopping rules, traceability, and stateful orchestration using loops, graphs, and popular frameworks like LangChain and LangGraph.</p>\n\n          <p>A production Research Assistant is easy to describe but harder to control. It should retrieve relevant sources, synthesize an answer, and cite its evidence within a bounded workflow. It also needs <strong>explicit stopping rules</strong> rather than relying on an answer that merely sounds complete.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-purple);\">\n            <span class=\"rule-icon\">⚖️</span>\n            <span class=\"rule-text\"><strong>Framework Decision Rule:</strong> If we cannot name the stop condition and the trace evidence we will inspect, <em>do not pick a framework yet</em>!</span>\n          </div>\n        "
+        },
+        {
+          "id": "frameworks-orchestration-models",
+          "title": "Custom Loop vs Agent Abstraction vs Stateful Graph",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>The same Research Assistant behavior can be implemented across three orchestration paradigms:</p>\n\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Orchestration Model</th>\n                  <th>Ownership and Control</th>\n                  <th>Observability &amp; Debugging</th>\n                  <th>Ideal Production Use Case</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Custom loop</strong></td>\n                  <td style=\"color: var(--accent-emerald);\">High (You write the while loop)</td>\n                  <td style=\"color: var(--accent-emerald);\">Direct (Linear logs)</td>\n                  <td>Constrained, single-task systems (deterministic RAG)</td>\n                </tr>\n                <tr>\n                  <td><strong>Agent abstraction</strong></td>\n                  <td style=\"color: var(--accent-rose);\">Low (Framework manages loop)</td>\n                  <td>Implicit (Hidden prompt/parse cycles)</td>\n                  <td>Rapid prototyping or open-ended task exploration</td>\n                </tr>\n                <tr>\n                  <td><strong>Stateful graph (LangGraph)</strong></td>\n                  <td style=\"color: var(--accent-purple);\">Medium-High (Nodes &amp; edges)</td>\n                  <td style=\"color: var(--accent-emerald);\">Node-based state diffs</td>\n                  <td>Multi-step workflows, branching, human-in-the-loop</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Code Ownership:</strong> Choose the smallest surface that still makes our control flow explicit. A stateful graph makes each step a named node and each transition an edge, so debugging isolates to a single node or edge condition.</p>\n          </div>\n        "
+        },
+        {
+          "id": "frameworks-popular-ecosystem",
+          "title": "Survey of Popular Agent Frameworks",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Developers turn to established frameworks to leverage standardized orchestration patterns:</p>\n\n          <div class=\"info-grid\">\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">🔗</span>\n              <span class=\"info-card-title\">LangChain &amp; LangGraph</span>\n              <span class=\"info-card-desc\">Stateful, multi-actor orchestration modeling agent workflows as directed graphs with explicit node transitions and checkpoint persistence.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">👥</span>\n              <span class=\"info-card-title\">CrewAI</span>\n              <span class=\"info-card-desc\">Role-playing multi-agent systems where autonomous agents take on specialized personas, goals, and hierarchical collaboration.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">☁️</span>\n              <span class=\"info-card-title\">Google Agent Dev Kit (ADK)</span>\n              <span class=\"info-card-desc\">Enterprise-focused toolkit for structuring, deploying, and monitoring production GenAI agents on Google Cloud and Vertex AI.</span>\n            </div>\n            <div class=\"info-card\">\n              <span class=\"info-card-icon\">💻</span>\n              <span class=\"info-card-title\">AutoGen</span>\n              <span class=\"info-card-desc\">Microsoft framework focusing on conversable multi-agent architectures with native code execution and human approvals.</span>\n            </div>\n          </div>\n        "
+        },
+        {
+          "id": "frameworks-operations-mvp",
+          "title": "Operations, Testing & Minimum Viable Agent Architecture",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>A minimum viable agent architecture stays the same across approaches:</p>\n          <ul class=\"concept-list\">\n            <li>📌 <strong>Input policy:</strong> Normalizes the user request and sets budgets (e.g. <code>max_steps</code>, <code>max_tokens</code>).</li>\n            <li>📌 <strong>Tool router:</strong> Maps state to an allowlisted tool call or a no-tool response.</li>\n            <li>📌 <strong>Bounded loop or graph:</strong> Updates state deterministically and stops for a named reason.</li>\n            <li>📌 <strong>Output contract:</strong> Always returns the same fields and includes audit trace evidence.</li>\n          </ul>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-emerald);\">\n            <span class=\"rule-icon\">📋</span>\n            <span class=\"rule-text\"><strong>Operational Discipline:</strong> Persist state snapshots at node boundaries so you can replay from a known point rather than re-running expensive tool calls to reproduce errors!</span>\n          </div>\n        "
+        },
+        {
+          "id": "frameworks-interactive-comparator",
+          "title": "Interactive Agent Frameworks & Graph Simulator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "agent-frameworks-sim",
+          "content": "\n          <p>Compare LangGraph, CrewAI, Google ADK, and AutoGen, and step through a stateful graph node transition in real time:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Step through each node below to inspect explicit state schema updates:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "Why does a stateful graph (such as LangGraph) make multi-step agent debugging easier than an implicit agent abstraction?",
+          "options": [
+            "Because graphs compile into C++ binaries",
+            "Because each step is a named node that explicitly declares what state it reads and writes, isolating failures to specific node transitions",
+            "Because graphs require zero code",
+            "Because graphs do not use vector databases"
+          ],
+          "correct": 1,
+          "explanation": "In a stateful graph, every state change is explicit. When an agent behaves unexpectedly, you can inspect the exact state snapshot updated by each node."
+        },
+        {
+          "question": "When is a custom loop (writing the while loop directly) the recommended orchestration model?",
+          "options": [
+            "When building open-ended multi-agent research roleplays",
+            "When building highly constrained, single-task systems (e.g. deterministic RAG) where maximum ownership and minimal abstraction overhead are required",
+            "When you do not know how to write Python functions",
+            "When deploying to quantum computers"
+          ],
+          "correct": 1,
+          "explanation": "A custom loop keeps surface area small and trace logs direct, making it ideal for constrained, deterministic workflows."
+        },
+        {
+          "question": "Which framework is specifically designed for role-playing multi-agent systems with specialized personas and hierarchical delegation?",
+          "options": [
+            "CrewAI",
+            "NumPy",
+            "SQLite",
+            "Docker"
+          ],
+          "correct": 0,
+          "explanation": "CrewAI orchestrates autonomous collaboration across specialized agents assigned distinct personas, goals, and backstories."
+        },
+        {
+          "question": "Why should operational agents persist state snapshots at node boundaries?",
+          "options": [
+            "To double API billing costs",
+            "To replay and debug executions from a known checkpoint instead of paying for redundant tool calls",
+            "To avoid using Git version control",
+            "To compress video files"
+          ],
+          "correct": 1,
+          "explanation": "State snapshots enable replayability and debugging from the exact point of failure without re-running external tool calls."
+        }
+      ]
+    },
+
+    {
+      "id": "reasoning-planning-memory",
+      "title": "Reasoning, Planning & Agent Memory",
+      "subtitle": "Detect infinite loops, formulate executable plans, and partition short-term context from persisted memory",
+      "icon": "🧠",
+      "color": "#EC4899",
+      "gradient": "linear-gradient(135deg, #EC4899, #8B5CF6)",
+      "sections": [
+        {
+          "id": "memory-infinite-loops",
+          "title": "Detecting Infinite Loops in Multi-Step Agents",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how multi-step AI agents orchestrate reasoning, planning, and memory to manage tool use effectively. Understand detecting infinite loops, creating executable plans with stop conditions, and differentiating short-term state from persisted memory.</p>\n\n          <p>A multi-step agent does not return one answer. It emits a sequence of intermediate messages, tool calls, and state updates, and the final response is only the last artifact in that sequence.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-rose);\">\n            <span class=\"rule-icon\">🔄</span>\n            <span class=\"rule-text\"><strong>The Infinite Loop Indicator:</strong> If <code>known_facts</code> gains no new information and <code>todo</code> remains unchanged after a tool run, executing another retrieval call is not justified. <em>If we cannot point to the state change that justified the next step, the step is probably accidental.</em></span>\n          </div>\n        "
+        },
+        {
+          "id": "memory-planning-progress",
+          "title": "Planning That Creates Observable Progress Signals",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>In bounded engineering terms, planning means producing an explicit next-action directive, or a short step list, conditioned on the current state and on budgets such as remaining steps and allowed tool calls.</p>\n\n          <p>A plan creates a stop condition and a <strong>progress signal</strong>. If the plan says <em>\"add citations for each claim\"</em>, progress is measurable by counting claims without citations and watching that count decrease after each tool result is processed.</p>\n\n          <div class=\"tip-box\">\n            <p><strong>💡 Budget Constraint:</strong> Plans must be checked against a budget like <code>max_steps</code>, <code>max_tool_calls</code>, or <code>max_tokens</code> before the next model call is allowed!</p>\n          </div>\n        "
+        },
+        {
+          "id": "memory-state-vs-persistence",
+          "title": "Short-Term State vs Persisted Memory",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Memory must be partitioned into two distinct architectural layers:</p>\n\n          <div class=\"data-table-wrap\">\n            <table class=\"data-table\">\n              <thead>\n                <tr>\n                  <th>Dimension</th>\n                  <th style=\"color: var(--accent-cyan);\">Short-Term Context (Ephemeral)</th>\n                  <th style=\"color: var(--accent-purple);\">Persisted Memory (Durable)</th>\n                </tr>\n              </thead>\n              <tbody>\n                <tr>\n                  <td><strong>Scope &amp; Lifespan</strong></td>\n                  <td>Single execution run only</td>\n                  <td>Spans across multiple user sessions</td>\n                </tr>\n                <tr>\n                  <td><strong>Core Fields</strong></td>\n                  <td><code>goal</code>, <code>plan</code>, <code>open_questions</code>, <code>known_facts</code>, <code>citations</code></td>\n                  <td>User preferences, completed subtask checkpoints</td>\n                </tr>\n                <tr>\n                  <td><strong>Primary Function</strong></td>\n                  <td>Drives immediate step-by-step tool decisions</td>\n                  <td>Provides long-term continuity without re-ingesting logs</td>\n                </tr>\n                <tr>\n                  <td><strong>What to Exclude</strong></td>\n                  <td>Nothing needed for the immediate turn</td>\n                  <td>Sensitive user data, raw tool noise, transient queries</td>\n                </tr>\n                <tr>\n                  <td><strong>Failure Mode</strong></td>\n                  <td>Context window overflow or prompt drift</td>\n                  <td>Staleness, privacy leakage, memory bloat</td>\n                </tr>\n              </tbody>\n            </table>\n          </div>\n\n          <div class=\"rule-box\">\n            <span class=\"rule-icon\">💾</span>\n            <span class=\"rule-text\"><strong>Storage Invariant:</strong> Store only what we can justify using later. Memory bloat increases latency during context assembly and degrades output quality by crowding out relevant state.</span>\n          </div>\n        "
+        },
+        {
+          "id": "memory-stop-conditions",
+          "title": "Code-Evaluated Stop Conditions",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>A loop stops reliably only when code evaluates explicit done criteria, instead of hoping a prompt will produce a final answer at the right time.</p>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-emerald);\">\n            <span class=\"rule-icon\">🛑</span>\n            <span class=\"rule-text\"><strong>Rule to Enforce:</strong> Stop conditions must be evaluated in code, not left implicit in a prompt! Concrete checks include: every claim has a citation in <code>state.citations</code>, <code>state.open_questions</code> is empty, or budget remaining is below minimum.</span>\n          </div>\n        "
+        },
+        {
+          "id": "memory-interactive-detector",
+          "title": "Interactive Reasoning & Loop Detector Simulator",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "agent-memory-sim",
+          "content": "\n          <p>Observe how state diff tracking halts infinite agent tool loops and compare ephemeral context vs persisted memory:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Step through agent execution below to trigger loop interception:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "What is the observable indicator that a multi-step agent has entered an accidental infinite loop?",
+          "options": [
+            "The model changes its language to French",
+            "Tool calls are repeatedly emitted without any state change in known_facts or open_questions",
+            "The prompt token budget resets to zero",
+            "The vector database deletes all collections"
+          ],
+          "correct": 1,
+          "explanation": "If a tool call adds zero new information to state and the todo list remains unchanged, repeating the call is accidental repetition rather than progress."
+        },
+        {
+          "question": "Why must stop conditions be evaluated in code rather than left to the prompt?",
+          "options": [
+            "Because models can be non-deterministic and hallucinate completion or loop indefinitely without explicit programmatic guards",
+            "Because Python does not support string parsing",
+            "Because prompts cannot contain English instructions",
+            "Because GPUs only run while loops"
+          ],
+          "correct": 0,
+          "explanation": "Relying on prompts for termination is unreliable. Programmatic checks on step budgets and verification state guarantee bounded execution."
+        },
+        {
+          "question": "What belongs in Short-Term Context as opposed to Persisted Memory?",
+          "options": [
+            "User credit card numbers and home addresses",
+            "Ephemeral working state: goal, current plan, open_questions, known_facts, and tool history for the active turn",
+            "Permanent multi-year conversation transcripts",
+            "Database backup files"
+          ],
+          "correct": 1,
+          "explanation": "Short-term context holds the active working state required for immediate reasoning, which is cleared once the task resolves."
+        },
+        {
+          "question": "What is the danger of \"memory bloat\" in persisted agent memory stores?",
+          "options": [
+            "It increases context assembly latency and degrades generation quality by crowding out relevant state with stale or noisy data",
+            "It breaks CSS formatting in web browsers",
+            "It causes Python to uninstall packages",
+            "It changes the embedding vector dimension"
+          ],
+          "correct": 0,
+          "explanation": "Unchecked memory bloat consumes prompt token budgets with irrelevant historical noise and slows down context assembly."
+        }
+      ]
+    },
+
+    {
+      "id": "building-working-agent",
+      "title": "Building a Production Agent",
+      "subtitle": "Implement an end-to-end ReAct Research Assistant with Gemini 2.5 Flash, Chroma vector store, and guardrails",
+      "icon": "🤖",
+      "color": "#10B981",
+      "gradient": "linear-gradient(135deg, #10B981, #3B82F6)",
+      "sections": [
+        {
+          "id": "agent-baseline-pass",
+          "title": "The Bounded Research Assistant Baseline",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Explore how to build a working Research Assistant agent that processes one user query with one retrieval and final answer. Understand embeddings setup, tool registration with validation, model integration, and enforce safe tool usage with guardrails and bounded loops.</p>\n\n          <p>A working Research Assistant agent is easiest to debug when one user question triggers <strong>exactly one retrieval tool call</strong> and <strong>exactly one final answer that includes citations</strong>. That single bounded pass makes every boundary visible.</p>\n\n          <div class=\"flow-diagram\">\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-blue);\">\n              <span class=\"flow-step-icon\">💬</span>\n              <span class=\"flow-step-label\">User Query: \"How does LangGraph help build LLM applications?\"</span>\n            </div>\n            <span class=\"flow-arrow\">▼</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-purple);\">\n              <span class=\"flow-step-icon\">🛠️</span>\n              <span class=\"flow-step-label\">Tool Call: retrieve(query=\"LangGraph build...\", k=5)</span>\n            </div>\n            <span class=\"flow-arrow\">▼</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-emerald);\">\n              <span class=\"flow-step-icon\">📄</span>\n              <span class=\"flow-step-label\">Chroma Match: doc_103 (LangGraph Orchestration Guide)</span>\n            </div>\n            <span class=\"flow-arrow\">▼</span>\n            <div class=\"flow-step\" style=\"border: 2px solid var(--accent-cyan);\">\n              <span class=\"flow-step-icon\">🤖</span>\n              <span class=\"flow-step-label\">Final Answer citing doc_103 strictly</span>\n            </div>\n          </div>\n        "
+        },
+        {
+          "id": "agent-bounded-loop",
+          "title": "Bounding the Agent Loop & Recursion Limits",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>LangGraph exposes a direct lever for bounding agent execution: <code>recursion_limit</code>, passed through config on invoke:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — Bounding Agent Recursion</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"var\">result</span> = <span class=\"var\">agent</span>.<span class=\"fn\">invoke</span>(\n    {<span class=\"str\">\"messages\"</span>: [{<span class=\"str\">\"role\"</span>: <span class=\"str\">\"user\"</span>, <span class=\"str\">\"content\"</span>: <span class=\"var\">user_query</span>}]},\n    <span class=\"var\">config</span>={<span class=\"str\">\"recursion_limit\"</span>: <span class=\"num\">4</span>},\n)</code></pre>\n          </div>\n\n          <div class=\"rule-box\" style=\"border-left-color: var(--accent-purple);\">\n            <span class=\"rule-icon\">🔒</span>\n            <span class=\"rule-text\"><strong>Recursion Invariant:</strong> Bounding recursion to a tight limit (e.g. 4) prevents an underspecified question from triggering endless retrieval cycles while giving the model enough headroom for one retrieval pass and answer generation.</span>\n          </div>\n        "
+        },
+        {
+          "id": "agent-guardrails-allowlist",
+          "title": "Tool Schema Guardrails (extra=\"forbid\")",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Use Pydantic schema validation as a front-line guardrail to reject malformed arguments before tool execution:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — Tool Schema with Pydantic</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">langchain_core.tools</span> <span class=\"kw\">import</span> <span class=\"var\">tool</span>\n<span class=\"kw\">from</span> <span class=\"var\">pydantic</span> <span class=\"kw\">import</span> <span class=\"type\">BaseModel</span>, <span class=\"type\">Field</span>, <span class=\"type\">ConfigDict</span>\n\n<span class=\"kw\">class</span> <span class=\"type\">RetrieveArgs</span>(<span class=\"type\">BaseModel</span>):\n    <span class=\"var\">model_config</span> = <span class=\"type\">ConfigDict</span>(<span class=\"var\">extra</span>=<span class=\"str\">\"forbid\"</span>)\n    <span class=\"var\">query</span>: <span class=\"type\">str</span> = <span class=\"fn\">Field</span>(<span class=\"var\">max_length</span>=<span class=\"num\">500</span>, <span class=\"var\">description</span>=<span class=\"str\">\"Search query.\"</span>)\n    <span class=\"var\">k</span>: <span class=\"type\">int</span> = <span class=\"fn\">Field</span>(<span class=\"var\">default</span>=<span class=\"num\">5</span>, <span class=\"var\">ge</span>=<span class=\"num\">1</span>, <span class=\"var\">le</span>=<span class=\"num\">20</span>, <span class=\"var\">description</span>=<span class=\"str\">\"Number of documents to retrieve.\"</span>)\n\n<span class=\"op\">@</span><span class=\"fn\">tool</span>(<span class=\"str\">\"retrieve\"</span>, <span class=\"var\">args_schema</span>=<span class=\"type\">RetrieveArgs</span>)\n<span class=\"kw\">def</span> <span class=\"fn\">retrieve</span>(<span class=\"var\">query</span>: <span class=\"type\">str</span>, <span class=\"var\">k</span>: <span class=\"type\">int</span> = <span class=\"num\">5</span>) -&gt; <span class=\"type\">dict</span>:\n    <span class=\"str\">\"\"\"Retrieve relevant documents for a query from the Research Assistant's index.\"\"\"</span>\n    <span class=\"var\">docs</span> = <span class=\"var\">vectorstore</span>.<span class=\"fn\">similarity_search</span>(<span class=\"var\">query</span>, <span class=\"var\">k</span>=<span class=\"var\">k</span>)\n    <span class=\"kw\">return</span> {\n        <span class=\"str\">\"documents\"</span>: [\n            {\n                <span class=\"str\">\"id\"</span>: <span class=\"var\">d</span>.<span class=\"var\">metadata</span>[<span class=\"str\">\"chunk_id\"</span>],\n                <span class=\"str\">\"text\"</span>: <span class=\"var\">d</span>.<span class=\"var\">page_content</span>,\n                <span class=\"str\">\"title\"</span>: <span class=\"var\">d</span>.<span class=\"var\">metadata</span>.<span class=\"fn\">get</span>(<span class=\"str\">\"source\"</span>, <span class=\"str\">\"Unknown\"</span>)\n            }\n            <span class=\"kw\">for</span> <span class=\"var\">d</span> <span class=\"kw\">in</span> <span class=\"var\">docs</span>\n        ]\n    }</code></pre>\n          </div>\n        "
+        },
+        {
+          "id": "agent-evaluable-traces",
+          "title": "Traces That Make the Agent Evaluable",
+          "type": "concept",
+          "badge": "concept",
+          "content": "\n          <p>Extract and inspect these artifacts from <code>result[\"messages\"]</code> after each run to evaluate faithfulness and relevance:</p>\n          <ul class=\"concept-list\">\n            <li>📌 <strong>User question:</strong> First message in <code>result[\"messages\"]</code></li>\n            <li>📌 <strong>Tool call messages:</strong> Tool name (<code>retrieve</code>) and exact arguments passed</li>\n            <li>📌 <strong>Tool result messages:</strong> Retrieved <code>doc_ids</code> and metadata titles</li>\n            <li>📌 <strong>Final assistant message:</strong> Answer text and cited document IDs</li>\n            <li>📌 <strong>Message count:</strong> Proxy for how many steps ran and whether recursion limits were hit</li>\n          </ul>\n\n          <div class=\"warning-box\">\n            <p><strong>🚨 Silent Failure Hazard:</strong> An agent can retrieve the wrong chunks or invent a doc ID, and still return a fluent, confident answer with no exceptions thrown. Inspect <code>result[\"messages\"]</code> directly to verify citations match retrieved documents!</p>\n          </div>\n        "
+        },
+        {
+          "id": "agent-complete-script",
+          "title": "Complete Executable Research Assistant Script",
+          "type": "code",
+          "badge": "code",
+          "content": "\n          <p>Here is the complete working ReAct agent script using LangChain v1, Gemini 2.5 Flash, and persistent Chroma vector store:</p>\n\n          <div class=\"code-block\">\n            <div class=\"code-header\">\n              <span class=\"code-lang\">Python — working_agent.py</span>\n              <button class=\"code-copy\">Copy</button>\n            </div>\n            <pre><code><span class=\"kw\">from</span> <span class=\"var\">langchain_huggingface</span> <span class=\"kw\">import</span> <span class=\"type\">HuggingFaceEmbeddings</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_chroma</span> <span class=\"kw\">import</span> <span class=\"type\">Chroma</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain_google_genai</span> <span class=\"kw\">import</span> <span class=\"type\">ChatGoogleGenerativeAI</span>\n<span class=\"kw\">from</span> <span class=\"var\">langchain.agents</span> <span class=\"kw\">import</span> <span class=\"fn\">create_agent</span>\n\n<span class=\"cmt\"># 1. Embeddings & Chroma Collection</span>\n<span class=\"var\">embeddings</span> = <span class=\"type\">HuggingFaceEmbeddings</span>(<span class=\"var\">model_name</span>=<span class=\"str\">\"sentence-transformers/all-MiniLM-L6-v2\"</span>)\n<span class=\"var\">vectorstore</span> = <span class=\"type\">Chroma</span>.<span class=\"fn\">from_texts</span>(\n    <span class=\"var\">texts</span>=[\n        <span class=\"str\">\"Quantum computing relies on qubits which can exist in superposition states.\"</span>,\n        <span class=\"str\">\"Transformer architectures rely on self-attention mechanisms to dynamically weigh token importance.\"</span>,\n        <span class=\"str\">\"LangGraph enables stateful multi-actor applications built with LLMs by modeling workflows as graphs.\"</span>,\n        <span class=\"str\">\"Retrieval-Augmented Generation (RAG) reduces hallucination by grounding responses in retrieved contexts.\"</span>\n    ],\n    <span class=\"var\">metadatas</span>=[\n        {<span class=\"str\">\"chunk_id\"</span>: <span class=\"str\">\"doc_101\"</span>, <span class=\"str\">\"source\"</span>: <span class=\"str\">\"Intro to Quantum Computing\"</span>},\n        {<span class=\"str\">\"chunk_id\"</span>: <span class=\"str\">\"doc_102\"</span>, <span class=\"str\">\"source\"</span>: <span class=\"str\">\"Attention Paper\"</span>},\n        {<span class=\"str\">\"chunk_id\"</span>: <span class=\"str\">\"doc_103\"</span>, <span class=\"str\">\"source\"</span>: <span class=\"str\">\"LangGraph Guide\"</span>},\n        {<span class=\"str\">\"chunk_id\"</span>: <span class=\"str\">\"doc_104\"</span>, <span class=\"str\">\"source\"</span>: <span class=\"str\">\"RAG Architecture\"</span>}\n    ],\n    <span class=\"var\">embedding</span>=<span class=\"var\">embeddings</span>,\n    <span class=\"var\">collection_name</span>=<span class=\"str\">\"internal_docs\"</span>,\n    <span class=\"var\">persist_directory</span>=<span class=\"str\">\"./chroma_store\"</span>\n)\n\n<span class=\"cmt\"># 2. Chat Model & System Prompt</span>\n<span class=\"var\">llm</span> = <span class=\"type\">ChatGoogleGenerativeAI</span>(<span class=\"var\">model</span>=<span class=\"str\">\"gemini-2.5-flash\"</span>, <span class=\"var\">api_key</span>=<span class=\"str\">\"{{GEMINI_API_KEY}}\"</span>, <span class=\"var\">temperature</span>=<span class=\"num\">0</span>)\n\n<span class=\"var\">SYSTEM_PROMPT</span> = <span class=\"str\">\"\"\"You are a research assistant answering questions using an internal knowledge base.\nUse retrieve whenever knowledge-base information is needed.\nBase your answer strictly on information returned by the tool. Do not invent facts or doc IDs.\nIf information is insufficient, explain that the knowledge base lacks enough detail.\"\"\"</span>\n\n<span class=\"var\">agent</span> = <span class=\"fn\">create_agent</span>(<span class=\"var\">model</span>=<span class=\"var\">llm</span>, <span class=\"var\">tools</span>=[<span class=\"var\">retrieve</span>], <span class=\"var\">system_prompt</span>=<span class=\"var\">SYSTEM_PROMPT</span>)\n\n<span class=\"kw\">if</span> <span class=\"var\">__name__</span> == <span class=\"str\">\"__main__\"</span>:\n    <span class=\"var\">res</span> = <span class=\"var\">agent</span>.<span class=\"fn\">invoke</span>({<span class=\"str\">\"messages\"</span>: [{<span class=\"str\">\"role\"</span>: <span class=\"str\">\"user\"</span>, <span class=\"str\">\"content\"</span>: <span class=\"str\">\"How does LangGraph help build LLM applications?\"</span>}]})\n    <span class=\"fn\">print</span>(<span class=\"var\">res</span>[<span class=\"str\">\"messages\"</span>][-<span class=\"num\">1</span>].<span class=\"var\">content</span>)</code></pre>\n          </div>\n        "
+        },
+        {
+          "id": "agent-interactive-assistant",
+          "title": "Interactive Research Assistant Sandbox",
+          "type": "interactive",
+          "badge": "interactive",
+          "interactiveId": "working-agent-sim",
+          "content": "\n          <p>Execute live ReAct agent runs, inspect intermediate tool calls and responses, and verify grounding:</p>\n          <p style=\"color: var(--text-muted); font-size: 0.88rem;\">Select a question below to trace the complete agent conversation array:</p>\n        "
+        }
+      ],
+      "quiz": [
+        {
+          "question": "Why should tool arguments be wrapped in Pydantic with ConfigDict(extra=\"forbid\")?",
+          "options": [
+            "To automatically translate arguments into Russian",
+            "To reject any undeclared or hallucinated argument keys before the tool handler ever executes",
+            "To convert floating-point numbers into strings",
+            "To disable the Python garbage collector"
+          ],
+          "correct": 1,
+          "explanation": "Setting extra=\"forbid\" turns the schema into an active guardrail that halts malformed tool calls before execution."
+        },
+        {
+          "question": "What is the role of recursion_limit in create_agent / LangGraph invocations?",
+          "options": [
+            "It bounds the maximum number of internal tool/model loop steps, preventing infinite execution",
+            "It sets the maximum token length of the system prompt",
+            "It limits the number of users allowed on the server",
+            "It limits network bandwidth"
+          ],
+          "correct": 0,
+          "explanation": "recursion_limit caps loop steps, ensuring that even if an agent attempts repeated tool calls, execution terminates deterministically."
+        },
+        {
+          "question": "Why is it dangerous to rely solely on system prompt instructions for citation discipline?",
+          "options": [
+            "Because system prompts increase latency by 500%",
+            "Because a model can return a fluent, confident answer while citing an invented doc_id with zero errors thrown in the stack",
+            "Because Gemini does not support system prompts",
+            "Because citations must be stored in cookies"
+          ],
+          "correct": 1,
+          "explanation": "Language models can hallucinate citations smoothly. Without code-level validation comparing cited IDs against retrieved IDs, false citations pass unnoticed."
+        },
+        {
+          "question": "Where can you inspect the entire intermediate step sequence of a LangChain v1 agent invocation?",
+          "options": [
+            "Inside the result[\"messages\"] list, which contains the user prompt, tool calls, tool results, and final answer",
+            "In the computer BIOS settings",
+            "In the git commit log",
+            "Inside the browser localStorage"
+          ],
+          "correct": 0,
+          "explanation": "result[\"messages\"] contains the complete conversational trajectory, allowing developers to inspect tool arguments, retrieved IDs, and answer grounding."
+        }
+      ]
+    }
   ]
 };
 
@@ -2149,7 +2528,9 @@ const ACHIEVEMENTS = [
   { id: 'thirty_sections', name: 'Production Commander', desc: 'Complete 30 sections', icon: '🚀', xpReward: 150 },
   { id: 'thirty_five_sections', name: 'Vector Specialist', desc: 'Complete 35 sections', icon: '🎯', xpReward: 180 },
   { id: 'forty_sections', name: 'RAG Master', desc: 'Complete 40 sections', icon: '⚡', xpReward: 200 },
-  { id: 'all_sections_complete', name: 'Grandmaster AI Architect', desc: 'Complete all course sections', icon: '👑', xpReward: 250 },
+  { id: 'forty_five_sections', name: 'Agentic Engineer', desc: 'Complete 45 sections', icon: '🛠️', xpReward: 220 },
+  { id: 'fifty_sections', name: 'Autonomous Systems Lead', desc: 'Complete 50 sections', icon: '🤖', xpReward: 250 },
+  { id: 'all_sections_complete', name: 'Grandmaster AI Architect', desc: 'Complete all course sections', icon: '👑', xpReward: 300 },
   { id: 'cost_optimizer', name: 'Budget Enforcer', desc: 'Used the Cost & Latency Explorer', icon: '🧮', xpReward: 35 },
   { id: 'env_secured', name: 'Security Guard', desc: 'Secured environment variables and API keys', icon: '🛡️', xpReward: 35 },
   { id: 'all_quizzes', name: 'Quiz Champion', desc: 'Complete all quizzes', icon: '🏅', xpReward: 80 },

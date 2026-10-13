@@ -24,6 +24,10 @@ import VectorDbSelectorSim from '@/components/VectorDbSelectorSim';
 import ChunkingHybridSim from '@/components/ChunkingHybridSim';
 import RagPipelineSim from '@/components/RagPipelineSim';
 import RagFailureDebuggerSim from '@/components/RagFailureDebuggerSim';
+import ToolRouterSim from '@/components/ToolRouterSim';
+import AgentFrameworksSim from '@/components/AgentFrameworksSim';
+import AgentMemorySim from '@/components/AgentMemorySim';
+import WorkingAgentSim from '@/components/WorkingAgentSim';
 
 export default function AcademyApp() {
   // ─── User & Cloud State ─────────────────────────────────────
@@ -120,6 +124,42 @@ export default function AcademyApp() {
 
   // ─── Initial Load & Hydration ───────────────────────────────
   useEffect(() => {
+    // Check URL parameters for direct module navigation
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mod = params.get('module');
+      if (mod) {
+        const found = COURSE_CONTENT.modules.find((m) => m.id === mod);
+        if (found) {
+          setCurrentView(mod);
+          if (found.sections && found.sections.length > 0) {
+            setExpandedSections(new Set([found.sections[0].id]));
+          }
+        }
+      }
+    } catch (e) {}
+
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const mod = params.get('module');
+        if (mod) {
+          const found = COURSE_CONTENT.modules.find((m) => m.id === mod);
+          if (found) {
+            setCurrentView(mod);
+            if (found.sections && found.sections.length > 0) {
+              setExpandedSections(new Set([found.sections[0].id]));
+            }
+            return;
+          }
+        }
+        setCurrentView('dashboard');
+        setExpandedSections(new Set());
+      } catch (e) {}
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
     const savedUser = localStorage.getItem('ai_academy_username');
     if (savedUser) {
       setUsername(savedUser);
@@ -146,6 +186,10 @@ export default function AcademyApp() {
       // First visit: show callsign modal
       setIsUserModalOpen(true);
     }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // ─── Bind Global Course Interactive Handlers ─────────────────
@@ -277,8 +321,26 @@ export default function AcademyApp() {
   // ─── Navigation ─────────────────────────────────────────────
   const navigateTo = (viewId) => {
     setCurrentView(viewId);
-    setExpandedSections(new Set());
+    if (viewId !== 'dashboard') {
+      const mod = COURSE_CONTENT.modules.find((m) => m.id === viewId);
+      if (mod && mod.sections && mod.sections.length > 0) {
+        setExpandedSections(new Set([mod.sections[0].id]));
+      } else {
+        setExpandedSections(new Set());
+      }
+    } else {
+      setExpandedSections(new Set());
+    }
     setIsMobileSidebarOpen(false);
+    try {
+      const url = new URL(window.location.href);
+      if (viewId === 'dashboard') {
+        url.searchParams.delete('module');
+      } else {
+        url.searchParams.set('module', viewId);
+      }
+      window.history.pushState({}, '', url.toString());
+    } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -908,6 +970,38 @@ export default function AcademyApp() {
                                 onInteract={() => {
                                   showToast('🩺', 'Triage Complete', 'Sequential pipeline debugged!', '+35 XP');
                                   setXp((x) => x + 35);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'tool-router-sim' && (
+                              <ToolRouterSim
+                                onInteract={() => {
+                                  showToast('🛡️', 'Router Verified', 'Tool call schema validated!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'agent-frameworks-sim' && (
+                              <AgentFrameworksSim
+                                onInteract={() => {
+                                  showToast('🕸️', 'Graph Stepped', 'Stateful node transitioned!', '+30 XP');
+                                  setXp((x) => x + 30);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'agent-memory-sim' && (
+                              <AgentMemorySim
+                                onInteract={() => {
+                                  showToast('🧠', 'Loop Checked', 'State diff progression verified!', '+35 XP');
+                                  setXp((x) => x + 35);
+                                }}
+                              />
+                            )}
+                            {section.interactiveId === 'working-agent-sim' && (
+                              <WorkingAgentSim
+                                onInteract={() => {
+                                  showToast('🤖', 'Agent Grounded', 'ReAct trace completed!', '+40 XP');
+                                  setXp((x) => x + 40);
                                 }}
                               />
                             )}
