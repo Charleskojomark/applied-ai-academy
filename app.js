@@ -1512,24 +1512,58 @@ function copyCode(btn) {
 function bindGlobalEvents() {
   const hamburger = document.getElementById('hamburgerBtn');
   const overlay = document.getElementById('sidebarOverlay');
+  const closeBtn = document.getElementById('sidebarCloseBtn');
   
   if (hamburger) {
-    hamburger.addEventListener('click', toggleMobileSidebar);
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMobileSidebar();
+    });
   }
   if (overlay) {
-    overlay.addEventListener('click', closeMobileSidebar);
+    overlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileSidebar();
+    });
   }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileSidebar();
+    });
+  }
+
+  // Close sidebar on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMobileSidebar();
+      closeQuiz();
+    }
+  });
+
+  // Handle window resize: close mobile sidebar when returning to desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+      closeMobileSidebar();
+    }
+  });
 }
 
 function toggleMobileSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   const hamburger = document.getElementById('hamburgerBtn');
+  if (!sidebar) return;
   
   const isOpen = sidebar.classList.contains('open');
-  sidebar.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('active', !isOpen);
-  hamburger.classList.toggle('active', !isOpen);
+  if (isOpen) {
+    closeMobileSidebar();
+  } else {
+    sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('active');
+    if (hamburger) hamburger.classList.add('active');
+    document.body.classList.add('sidebar-locked');
+  }
 }
 
 function closeMobileSidebar() {
@@ -1537,9 +1571,10 @@ function closeMobileSidebar() {
   const overlay = document.getElementById('sidebarOverlay');
   const hamburger = document.getElementById('hamburgerBtn');
   
-  sidebar.classList.remove('open');
-  overlay.classList.remove('active');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('active');
   if (hamburger) hamburger.classList.remove('active');
+  document.body.classList.remove('sidebar-locked');
 }
 
 // ─── Persistence ─────────────────────────────────────────────

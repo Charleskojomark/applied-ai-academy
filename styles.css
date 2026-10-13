@@ -137,28 +137,43 @@ a:hover { color: var(--accent-indigo); }
     height: var(--header-height);
     background: rgba(7, 8, 15, 0.95);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-subtle);
     align-items: center;
     padding: 0 16px;
-    z-index: 900;
+    z-index: 960;
     gap: 12px;
 }
 .hamburger {
-    background: none;
+    background: transparent;
     border: none;
     cursor: pointer;
     padding: 8px;
+    margin-left: -4px;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: 5px;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    z-index: 965;
+}
+.hamburger:hover, .hamburger:active {
+    background: rgba(255, 255, 255, 0.08);
 }
 .hamburger span {
     display: block;
     width: 22px;
     height: 2px;
-    background: var(--text-secondary);
+    background: var(--text-primary);
     border-radius: 2px;
     transition: var(--transition-medium);
+    pointer-events: none;
 }
 .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
 .hamburger.active span:nth-child(2) { opacity: 0; }
@@ -182,16 +197,21 @@ a:hover { color: var(--accent-indigo); }
 
 /* ---------- Sidebar Overlay ---------- */
 .sidebar-overlay {
-    display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 949;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 970;
     opacity: 0;
-    transition: opacity var(--transition-medium);
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ease-out-expo), visibility 0.3s var(--ease-out-expo);
 }
 .sidebar-overlay.active {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 /* ---------- Sidebar ---------- */
@@ -210,10 +230,34 @@ a:hover { color: var(--accent-indigo); }
     overflow-x: hidden;
     transition: transform var(--transition-medium);
 }
-
+body.sidebar-locked {
+    overflow: hidden;
+    touch-action: none;
+}
 .sidebar-header {
     padding: 20px 18px;
     border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sidebar-close-btn {
+    display: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.9rem;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+.sidebar-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
 }
 .logo {
     display: flex;
@@ -2197,63 +2241,424 @@ pre code {
 @media (max-width: 768px) {
     .mobile-header {
         display: flex;
+        z-index: 960;
     }
     .sidebar {
         transform: translateX(-100%);
-        z-index: 960;
+        z-index: 980;
+        width: 300px;
+        max-width: 85vw;
+        box-shadow: none;
     }
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: 10px 0 40px rgba(0, 0, 0, 0.75);
     }
-    .sidebar-overlay {
-        display: block;
+    .sidebar-close-btn {
+        display: flex;
     }
     .main-content {
         margin-left: 0;
         max-width: 100%;
-        padding: calc(var(--header-height) + 20px) 16px 60px;
+        padding: calc(var(--header-height) + 16px) 14px 60px;
     }
     .stats-row {
         grid-template-columns: 1fr 1fr;
         gap: 10px;
+        margin-bottom: 24px;
     }
     .hero-section {
-        min-height: 220px;
-        padding: 24px;
+        min-height: 200px;
+        padding: 20px;
+        margin-bottom: 24px;
     }
     .hero-title {
-        font-size: 1.5rem;
+        font-size: 1.45rem;
+        line-height: 1.2;
+    }
+    .hero-desc {
+        font-size: 0.88rem;
     }
     .modules-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
+    .module-card {
+        padding: 20px 16px;
+    }
+    
+    /* Module View Mobile */
+    .module-header {
+        margin-bottom: 24px;
+    }
+    .module-hero {
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+    .module-hero-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 1.6rem;
+    }
+    .module-hero-title {
+        font-size: 1.5rem;
+        line-height: 1.25;
+    }
+    .module-hero-subtitle {
+        font-size: 0.88rem;
+        line-height: 1.5;
+    }
+    .module-section-count {
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 0.74rem;
+    }
+    .sections-container {
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+    .section-card {
+        border-radius: var(--radius-md);
+    }
+    .section-header {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    .section-number {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    .section-title-text {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+    .section-content {
+        padding: 0 14px 18px;
+        font-size: 0.88rem;
+    }
+    .mark-complete-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 14px;
+        font-size: 0.82rem;
+        margin-top: 18px;
+    }
+
+    /* Pipeline & Architecture Diagrams Mobile */
     .pipeline-stages {
         flex-direction: column;
+        gap: 8px;
+    }
+    .pipeline-stage {
+        padding: 14px 12px;
     }
     .pipeline-connector {
         display: none;
     }
-    .info-grid {
-        grid-template-columns: 1fr;
-    }
-    .persona-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    .quiz-modal {
-        width: 98%;
-        margin: 10px;
-    }
-    .section-content {
-        padding: 0 16px 20px;
-    }
-    .section-header {
-        padding: 16px;
-    }
     .flow-diagram {
         flex-direction: column;
+        gap: 8px;
+        padding: 16px;
+    }
+    .flow-step {
+        width: 100%;
+        min-width: 0;
+        padding: 12px;
     }
     .flow-arrow {
         transform: rotate(90deg);
+        margin: 2px 0;
+    }
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .persona-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .comparison-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Cost & Latency Explorer Mobile */
+    .cost-explorer {
+        padding: 16px;
+        margin: 18px 0;
+    }
+    .cost-explorer-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .explorer-controls-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .control-card {
+        padding: 14px;
+    }
+    .slider-input {
+        height: 8px;
+    }
+    .slider-input::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+    }
+    .slider-input::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+    }
+    .explorer-metrics-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    .metric-box {
+        padding: 12px;
+    }
+    .metric-num {
+        font-size: 1.15rem;
+    }
+    .visual-bar-header {
+        font-size: 0.72rem;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .formula-callout {
+        font-size: 0.8rem;
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* Truncation Simulator Mobile */
+    .truncation-sim {
+        padding: 16px;
+        margin: 18px 0;
+    }
+    .trunc-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .trunc-btn {
+        padding: 10px 8px;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+    .trunc-block {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        font-size: 0.76rem;
+        padding: 10px 12px;
+    }
+
+    /* Decision Tree Mobile */
+    .decision-tree-viz {
+        padding: 16px;
+        margin: 18px 0;
+    }
+    .tree-scenario-tabs {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .tree-scenario-tab {
+        padding: 12px 14px;
+        font-size: 0.8rem;
+    }
+    .tree-node {
+        padding: 12px;
+        gap: 10px;
+    }
+    .tree-node-icon {
+        font-size: 1.1rem;
+    }
+    .tree-node-title {
+        font-size: 0.82rem;
+    }
+    .tree-node-desc {
+        font-size: 0.78rem;
+    }
+
+    /* Virtual Sandbox Mobile */
+    .env-sandbox {
+        margin: 18px 0;
+    }
+    .sandbox-topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px;
+    }
+    .sandbox-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .sandbox-tab {
+        flex: 1;
+        text-align: center;
+        padding: 8px 6px;
+        font-size: 0.72rem;
+    }
+    .sandbox-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        width: 100%;
+    }
+    .scenario-select {
+        width: 100%;
+        font-size: 0.78rem;
+        padding: 8px 10px;
+    }
+    .run-sim-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+        font-size: 0.82rem;
+    }
+    .sandbox-file-panel {
+        padding: 12px;
+        font-size: 0.75rem;
+        max-height: 260px;
+    }
+    .terminal-console {
+        padding: 12px;
+        font-size: 0.75rem;
+        min-height: 100px;
+        max-height: 200px;
+    }
+
+    /* Practice Lab Mobile */
+    .practice-lab {
+        padding: 16px;
+        margin: 20px 0;
+    }
+    .practice-lab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .checklist-container {
+        padding: 14px;
+        margin: 14px 0;
+    }
+    .checklist-item {
+        padding: 8px 0;
+        gap: 10px;
+        font-size: 0.8rem;
+        min-height: 40px;
+    }
+    .checklist-checkbox {
+        width: 22px;
+        height: 22px;
+        margin-top: 0;
+    }
+
+    /* Tables, Codes, Callouts Mobile */
+    .data-table-wrap {
+        margin: 14px 0;
+        border-radius: var(--radius-sm);
+        -webkit-overflow-scrolling: touch;
+    }
+    .data-table th, .data-table td {
+        padding: 10px 12px;
+        font-size: 0.76rem;
+    }
+    .code-block {
+        margin: 14px 0;
+    }
+    .code-header {
+        padding: 8px 12px;
+    }
+    .code-copy {
+        padding: 5px 12px;
+        min-height: 30px;
+        font-size: 0.72rem;
+    }
+    pre {
+        padding: 12px;
+        font-size: 0.76rem;
+        line-height: 1.6;
+        -webkit-overflow-scrolling: touch;
+    }
+    .rule-box, .warning-box, .tip-box {
+        padding: 14px;
+        font-size: 0.82rem;
+        gap: 10px;
+        margin: 16px 0;
+    }
+    .rule-icon {
+        font-size: 1.1rem;
+    }
+    .rule-text {
+        font-size: 0.82rem;
+    }
+
+    /* Quiz Modals Mobile */
+    .quiz-modal {
+        width: 95%;
+        max-width: 95%;
+        max-height: 92vh;
+        border-radius: var(--radius-lg);
+    }
+    .quiz-header {
+        padding: 16px 18px 12px;
+    }
+    .quiz-body {
+        padding: 20px 16px;
+    }
+    .quiz-question {
+        font-size: 0.95rem;
+        margin-bottom: 18px;
+    }
+    .quiz-option {
+        padding: 12px 14px;
+        font-size: 0.82rem;
+        gap: 10px;
+    }
+    .quiz-footer {
+        padding: 14px 16px;
+    }
+    .quiz-next-btn {
+        width: 100%;
+    }
+    .results-modal {
+        width: 95%;
+        padding: 24px 16px;
+    }
+    .results-title {
+        font-size: 1.3rem;
+    }
+    .results-btn {
+        width: 100%;
+    }
+
+    /* Quiz Start Card on Module Page */
+    .quiz-start-card {
+        padding: 24px 16px;
+        margin-top: 30px;
+        border-radius: var(--radius-lg);
+    }
+    .quiz-start-title {
+        font-size: 1.3rem;
+    }
+    .quiz-start-btn {
+        width: 100%;
+        padding: 14px;
+    }
+    .quiz-start-stats {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
     }
 }
 
@@ -2265,9 +2670,26 @@ pre code {
         grid-template-columns: 1fr;
     }
     .results-stats {
-        gap: 16px;
+        gap: 14px;
+    }
+    .explorer-metrics-row {
+        grid-template-columns: 1fr;
+    }
+    .trunc-controls {
+        grid-template-columns: 1fr;
+    }
+    .module-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .hero-title {
+        font-size: 1.35rem;
+    }
+    .module-hero-title {
+        font-size: 1.35rem;
     }
 }
+
 
 /* Utility */
 .gradient-text {
