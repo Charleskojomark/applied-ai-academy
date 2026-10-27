@@ -68,7 +68,7 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { username, xp, level, streak, completedSections, completedQuizzes } = body || {};
+    const { username, xp, level, streak, completedSections, completedQuizzes, achievements } = body || {};
 
     if (!username) {
       return NextResponse.json(
@@ -83,6 +83,7 @@ export async function PUT(request) {
       streak: typeof streak === 'number' ? streak : undefined,
       completedSections: Array.isArray(completedSections) ? completedSections : undefined,
       completedQuizzes: typeof completedQuizzes === 'object' ? completedQuizzes : undefined,
+      achievements: Array.isArray(achievements) ? achievements : undefined,
     });
 
     if (!user) {

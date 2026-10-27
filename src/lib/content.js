@@ -4676,6 +4676,10 @@ const LEVELS = [
   { level: 4, name: 'Architect', minXp: 500, maxXp: 850, icon: '🏗️' },
   { level: 5, name: 'Master', minXp: 850, maxXp: 1300, icon: '👑' },
   { level: 6, name: 'Grandmaster', minXp: 1300, maxXp: 2000, icon: '⚡' },
+  { level: 7, name: 'Principal Architect', minXp: 2000, maxXp: 3000, icon: '🛡️' },
+  { level: 8, name: 'AI Fellow', minXp: 3000, maxXp: 4500, icon: '🚀' },
+  { level: 9, name: 'AI Titan', minXp: 4500, maxXp: 6500, icon: '🌌' },
+  { level: 10, name: 'AI Legend', minXp: 6500, maxXp: 10000, icon: '🏆' },
 ];
 
 const ACHIEVEMENTS = [

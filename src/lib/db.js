@@ -25,6 +25,13 @@ export async function ensureUsersTable() {
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
+  try {
+    await sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '[]'::jsonb;
+    `;
+  } catch (e) {
+    // Column may already exist or table alteration not permitted
+  }
 }
 
 /**
@@ -71,8 +78,8 @@ export async function createOrGetUser(username) {
 
   // Insert new user
   const inserted = await sql`
-    INSERT INTO users (username, xp, level, streak, completed_sections, completed_quizzes)
-    VALUES (${cleanUsername}, 0, 1, 1, '[]'::jsonb, '{}'::jsonb)
+    INSERT INTO users (username, xp, level, streak, completed_sections, completed_quizzes, achievements)
+    VALUES (${cleanUsername}, 0, 1, 1, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb)
     RETURNING *
   `;
 
@@ -82,7 +89,7 @@ export async function createOrGetUser(username) {
 /**
  * Update user progress
  */
-export async function updateUserProgress(username, { xp, level, streak, completedSections, completedQuizzes }) {
+export async function updateUserProgress(username, { xp, level, streak, completedSections, completedQuizzes, achievements }) {
   if (!username) throw new Error('Username is required');
   const sql = getDb();
   await ensureUsersTable();
@@ -97,6 +104,7 @@ export async function updateUserProgress(username, { xp, level, streak, complete
       streak = COALESCE(${streak}, streak),
       completed_sections = COALESCE(${completedSections ? JSON.stringify(completedSections) : null}::jsonb, completed_sections),
       completed_quizzes = COALESCE(${completedQuizzes ? JSON.stringify(completedQuizzes) : null}::jsonb, completed_quizzes),
+      achievements = COALESCE(${achievements ? JSON.stringify(achievements) : null}::jsonb, achievements),
       updated_at = CURRENT_TIMESTAMP
     WHERE LOWER(username) = ${lowerUsername}
     RETURNING *

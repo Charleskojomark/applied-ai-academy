@@ -67,7 +67,8 @@ export default function AcademyApp() {
   };
 
   // ─── Cloud Sync Helper ──────────────────────────────────────
-  const syncToNeon = async (newXp, newSections, newQuizzes, newLevel) => {
+  // ─── Cloud Sync Helper ──────────────────────────────────────
+  const syncToNeon = async (newXp, newSections, newQuizzes, newLevel, newAchievements) => {
     if (!username) return;
     setIsSyncing(true);
     try {
@@ -81,6 +82,7 @@ export default function AcademyApp() {
           streak,
           completedSections: Array.from(newSections),
           completedQuizzes: newQuizzes,
+          achievements: Array.from(newAchievements || achievements),
         }),
       });
     } catch (err) {
@@ -99,27 +101,73 @@ export default function AcademyApp() {
     return current;
   };
 
-  // ─── Check Achievements ─────────────────────────────────────
-  const evaluateAchievements = (currentXp, currentSections, currentQuizzes) => {
-    const newAchievements = new Set(achievements);
+  // ─── Deterministic Achievements Computation ────────────────
+  const computeAllAchievements = (currentSections, currentQuizzes, existingAchievements = new Set(), options = { showToasts: false }) => {
+    const updated = new Set(existingAchievements);
     const sectsCount = currentSections.size;
-    const quizCount = Object.keys(currentQuizzes).length;
+    const quizEntries = Object.values(currentQuizzes || {});
+    const quizCount = Object.keys(currentQuizzes || {}).length;
+    const totalCourseSections = COURSE_CONTENT.modules.reduce((acc, m) => acc + (m.sections ? m.sections.length : 0), 0);
+    const totalQuizModules = COURSE_CONTENT.modules.filter((m) => m.quiz && m.quiz.length > 0).length;
 
     const check = (id, condition, icon, name, xpReward) => {
-      if (condition && !newAchievements.has(id)) {
-        newAchievements.add(id);
-        showToast(icon, 'Achievement Unlocked!', name, `+${xpReward} XP`);
+      if (condition && !updated.has(id)) {
+        updated.add(id);
+        if (options.showToasts) {
+          showToast(icon, 'Achievement Unlocked!', name, `+${xpReward} XP`);
+        }
       }
     };
 
+    // Section milestones
     check('first_section', sectsCount >= 1, '🎯', 'First Steps', 10);
     check('five_sections', sectsCount >= 5, '📚', 'Dedicated Learner', 25);
     check('ten_sections', sectsCount >= 10, '🧠', 'Knowledge Seeker', 40);
     check('fifteen_sections', sectsCount >= 15, '🎓', 'Master Student', 60);
-    check('first_quiz', quizCount >= 1, '📝', 'Quiz Taker', 15);
-    check('all_quizzes', quizCount >= COURSE_CONTENT.modules.length, '🏅', 'Quiz Champion', 80);
+    check('twenty_sections', sectsCount >= 20, '⚡', 'AI Architect', 100);
+    check('twenty_five_sections', sectsCount >= 25, '🛡️', 'Prompt Engineer', 120);
+    check('thirty_sections', sectsCount >= 30, '🚀', 'Production Commander', 150);
+    check('thirty_five_sections', sectsCount >= 35, '🎯', 'Vector Specialist', 180);
+    check('forty_sections', sectsCount >= 40, '⚡', 'RAG Master', 200);
+    check('forty_five_sections', sectsCount >= 45, '🛠️', 'Agentic Engineer', 220);
+    check('fifty_sections', sectsCount >= 50, '🤖', 'Autonomous Systems Lead', 250);
+    check('all_sections_complete', totalCourseSections > 0 && sectsCount >= totalCourseSections, '👑', 'Grandmaster AI Architect', 300);
 
-    setAchievements(newAchievements);
+    // Quiz milestones
+    check('first_quiz', quizCount >= 1, '📝', 'Quiz Taker', 15);
+    check('all_quizzes', totalQuizModules > 0 && quizCount >= totalQuizModules, '🏅', 'Quiz Champion', 80);
+
+    // Perfect score on any quiz
+    const hasPerfectScore = quizEntries.some(
+      (q) => q && typeof q.score === 'number' && typeof q.total === 'number' && q.score === q.total && q.total > 0
+    );
+    check('perfect_score', hasPerfectScore, '💯', 'Perfect Score', 50);
+
+    // Module Master: Complete all sections in at least one module
+    const hasAnyCompletedModule = COURSE_CONTENT.modules.some(
+      (m) => m.sections && m.sections.length > 0 && m.sections.every((s) => currentSections.has(s.id))
+    );
+    check('module_complete', hasAnyCompletedModule, '🏆', 'Module Master', 30);
+
+    return updated;
+  };
+
+  // ─── Trigger Achievement Evaluation ─────────────────────────
+  const evaluateAchievements = (currentXp, currentSections, currentQuizzes, customId = null) => {
+    let base = new Set(achievements);
+    if (customId) {
+      const achDef = ACHIEVEMENTS.find((a) => a.id === customId);
+      if (achDef && !base.has(customId)) {
+        base.add(customId);
+        showToast(achDef.icon, 'Achievement Unlocked!', achDef.name, `+${achDef.xpReward} XP`);
+      }
+    }
+    const updated = computeAllAchievements(currentSections, currentQuizzes, base, { showToasts: true });
+    setAchievements(updated);
+    try {
+      localStorage.setItem('ai_academy_achievements', JSON.stringify(Array.from(updated)));
+    } catch (e) {}
+    return updated;
   };
 
   // ─── Initial Load & Hydration ───────────────────────────────
@@ -172,12 +220,25 @@ export default function AcademyApp() {
             setUserProfile(u);
             if (u.xp) setXp(u.xp);
             if (u.streak) setStreak(u.streak);
-            if (Array.isArray(u.completed_sections)) {
-              setCompletedSections(new Set(u.completed_sections));
-            }
-            if (u.completed_quizzes && typeof u.completed_quizzes === 'object') {
-              setCompletedQuizzes(u.completed_quizzes);
-            }
+            const loadedSections = new Set(Array.isArray(u.completed_sections) ? u.completed_sections : []);
+            const loadedQuizzes = u.completed_quizzes && typeof u.completed_quizzes === 'object' ? u.completed_quizzes : {};
+            const dbAchievements = new Set(Array.isArray(u.achievements) ? u.achievements : []);
+            try {
+              const localSaved = localStorage.getItem('ai_academy_achievements');
+              if (localSaved) {
+                JSON.parse(localSaved).forEach((id) => dbAchievements.add(id));
+              }
+            } catch (e) {}
+
+            setCompletedSections(loadedSections);
+            setCompletedQuizzes(loadedQuizzes);
+
+            const allEarned = computeAllAchievements(loadedSections, loadedQuizzes, dbAchievements, { showToasts: false });
+            setAchievements(allEarned);
+            try {
+              localStorage.setItem('ai_academy_achievements', JSON.stringify(Array.from(allEarned)));
+            } catch (e) {}
+
             showToast('☁️', 'Neon Cloud Synced', `Welcome back @${u.username}`, `Level ${u.level || 1}`);
           }
         })
@@ -302,12 +363,17 @@ export default function AcademyApp() {
       // Hydrate existing progress from Neon
       if (user.xp) setXp(user.xp);
       if (user.streak) setStreak(user.streak);
-      if (Array.isArray(user.completed_sections)) {
-        setCompletedSections(new Set(user.completed_sections));
-      }
-      if (user.completed_quizzes) {
-        setCompletedQuizzes(user.completed_quizzes);
-      }
+      const loadedSections = new Set(Array.isArray(user.completed_sections) ? user.completed_sections : []);
+      const loadedQuizzes = user.completed_quizzes && typeof user.completed_quizzes === 'object' ? user.completed_quizzes : {};
+      const dbAchievements = new Set(Array.isArray(user.achievements) ? user.achievements : []);
+      setCompletedSections(loadedSections);
+      setCompletedQuizzes(loadedQuizzes);
+
+      const allEarned = computeAllAchievements(loadedSections, loadedQuizzes, dbAchievements, { showToasts: false });
+      setAchievements(allEarned);
+      try {
+        localStorage.setItem('ai_academy_achievements', JSON.stringify(Array.from(allEarned)));
+      } catch (e) {}
     }
 
     showToast(
@@ -366,8 +432,8 @@ export default function AcademyApp() {
     const lvl = getCurrentLevel(newXp);
 
     showToast('✨', 'Section Completed!', 'Earned XP toward next rank', `+${XP_REWARDS.sectionComplete} XP`);
-    evaluateAchievements(newXp, nextSections, completedQuizzes);
-    syncToNeon(newXp, nextSections, completedQuizzes, lvl.level);
+    const updatedAch = evaluateAchievements(newXp, nextSections, completedQuizzes);
+    syncToNeon(newXp, nextSections, completedQuizzes, lvl.level, updatedAch);
   };
 
   // ─── Quiz Handler ───────────────────────────────────────────
@@ -395,8 +461,8 @@ export default function AcademyApp() {
 
     setQuizResults({ score, total, xpEarned, isPerfect });
     showToast(isPerfect ? '💯' : '🎉', 'Quiz Passed!', `Scored ${score}/${total}`, `+${xpEarned} XP`);
-    evaluateAchievements(newXp, completedSections, nextQuizzes);
-    syncToNeon(newXp, completedSections, nextQuizzes, lvl.level);
+    const updatedAch = evaluateAchievements(newXp, completedSections, nextQuizzes);
+    syncToNeon(newXp, completedSections, nextQuizzes, lvl.level, updatedAch);
   };
 
   // ─── Practice Lab Checklists ────────────────────────────────
@@ -418,10 +484,12 @@ export default function AcademyApp() {
   const completedSectsCount = completedSections.size;
   const globalProgressPct = totalSections > 0 ? (completedSectsCount / totalSections) * 100 : 0;
   const currentLvl = getCurrentLevel();
-  const nextLvl = LEVELS.find((l) => l.minXp > xp) || currentLvl;
-  const xpInLevel = xp - currentLvl.minXp;
-  const xpForNext = nextLvl.minXp - currentLvl.minXp;
-  const levelFillRatio = xpForNext > 0 ? Math.min(1, Math.max(0, xpInLevel / xpForNext)) : 1;
+  const nextLvl = LEVELS.find((l) => l.minXp > xp);
+  const isMaxLevel = !nextLvl;
+  const levelTargetXp = nextLvl ? nextLvl.minXp : currentLvl.maxXp;
+  const xpInLevel = Math.max(0, xp - currentLvl.minXp);
+  const xpForNext = Math.max(1, levelTargetXp - currentLvl.minXp);
+  const levelFillRatio = Math.min(1, Math.max(0, xpInLevel / xpForNext));
   const levelRingCircumference = 2 * Math.PI * 26;
   const levelRingOffset = levelRingCircumference - levelFillRatio * levelRingCircumference;
 
@@ -549,7 +617,9 @@ export default function AcademyApp() {
                 ></div>
               </div>
               <span className="xp-text" id="xpText">
-                {xp} / {nextLvl.minXp} XP
+                {isMaxLevel && xp >= currentLvl.maxXp
+                  ? `${xp} XP (MAX)`
+                  : `${xp} / ${levelTargetXp} XP`}
               </span>
             </div>
           </div>
@@ -896,7 +966,8 @@ export default function AcademyApp() {
                               <CostExplorer
                                 onInteract={() => {
                                   if (!achievements.has('cost_optimizer')) {
-                                    evaluateAchievements(xp, completedSections, completedQuizzes);
+                                    const nextAch = evaluateAchievements(xp, completedSections, completedQuizzes, 'cost_optimizer');
+                                    syncToNeon(xp, completedSections, completedQuizzes, currentLvl.level, nextAch);
                                   }
                                 }}
                               />
@@ -907,7 +978,11 @@ export default function AcademyApp() {
                               <VirtualSandbox
                                 onSimulationSuccess={() => {
                                   showToast('🛡️', 'Boundary Secured', 'API key validation passed!', '+35 XP');
-                                  setXp((x) => x + 35);
+                                  const newXp = xp + 35;
+                                  setXp(newXp);
+                                  const lvl = getCurrentLevel(newXp);
+                                  const nextAch = evaluateAchievements(newXp, completedSections, completedQuizzes, 'env_secured');
+                                  syncToNeon(newXp, completedSections, completedQuizzes, lvl.level, nextAch);
                                 }}
                               />
                             )}
